@@ -15,7 +15,6 @@
 <script src="./proj4js/proj4.js"></script>
 <script src="./Qgis2threejs.js"></script>
 <script src="./threejs/DeviceOrientationControls.js"></script>
-<script src="./mobile.js"></script>
 </head>
 <body>
 
@@ -101,8 +100,8 @@
       </table>
 
       <!-- camera actions and measure tool -->
-      <div class="action-btn action-move" onclick="startARModeHere()">Start AR mode here</div>
-      <div class="action-btn action-move hidden" onclick="moveHere()">Move here</div>
+      <div class="action-btn action-move" id="start-ar-here-btn">Start AR mode here</div>
+      <div class="action-btn action-move hidden" id="move-here-btn">Move here</div>
       <div id="orbitbtn" class="action-btn action-orbit">Orbit</div>
       <div id="measurebtn" class="action-btn">Measure distance</div>
     </div>
@@ -142,37 +141,6 @@
   </div>
   <div id="nextbtn"></div>
 </div>
-
-<script>
-Q3D.Config.coord.latlon = true;
-Q3D.Config.viewpoint = {lookAt:{x:598716.3893947866,y:4052826.0684010955,z:0.0},pos:{x:598317.5217757289,y:4052163.447469877,z:279.1472300175813}};
-Q3D.Config.localMode = true;
-Q3D.Config.AR.MND = 12.0;
-Q3D.Config.northArrow.enabled = true;
-Q3D.Config.northArrow.color = 0xe31a1c;
-
-var container = document.getElementById("view"),
-    app = Q3D.application,
-    gui = Q3D.gui;
-
-app.init(container);          // initialize viewer
-init();                       // initialization for mobile template (in mobile.js)
-
-// load the scene
-app.loadSceneFile("./data/index/scene.js", function (scene) {
-  // scene file has been loaded
-  app.start();
-
-  if ("AR" in app.urlParams) {
-    document.getElementById("ar-checkbox").checked = true;
-    startARMode();
-    moveToCurrentLocation();
-  }
-}, function (scene) {
-  // all relevant files have been loaded
-
-});
-</script>
 
 <!-- Custom enhancements -->
 <link rel="stylesheet" href="custom.css">

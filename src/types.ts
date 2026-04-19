@@ -235,6 +235,11 @@ declare global {
   // eslint-disable-next-line no-var
   var Q3D: Q3DStatic;
 
+  // Qgis2threejs layer class used in instanceof checks (getCurrentPosition)
+  class Q3DDEMLayer {
+    visibleObjects(): THREE.Object3D[];
+  }
+
   interface Window {
     Q3D: Q3DStatic;
     THREE: typeof THREE;
