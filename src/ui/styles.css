@@ -103,3 +103,144 @@
   color: #aaa;
   margin-bottom: 8px;
 }
+
+#divemap-panel .muted-line {
+  color: #888;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+#divemap-panel .plan-create-form {
+  margin-top: 10px;
+}
+
+#divemap-panel .plan-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#divemap-panel .plan-back {
+  background: transparent;
+  color: #ddd;
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+  margin: 0;
+}
+
+#divemap-panel .plan-back:hover {
+  color: #4a9eff;
+}
+
+#divemap-panel .plan-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#divemap-panel .unsaved-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffb84a;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+#divemap-panel .summary-strip {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+#divemap-panel .edit-hint {
+  font-size: 12px;
+  color: #9cc6ff;
+  font-style: italic;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  margin-bottom: 6px;
+}
+
+#divemap-panel .waypoint-list {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+#divemap-panel .waypoint-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+}
+
+#divemap-panel .waypoint-row:last-child {
+  border-bottom: none;
+}
+
+#divemap-panel .wp-seq {
+  color: #888;
+  min-width: 14px;
+  text-align: right;
+}
+
+#divemap-panel .wp-coords {
+  flex: 1;
+  color: #ddd;
+  font-variant-numeric: tabular-nums;
+}
+
+#divemap-panel .wp-depth {
+  color: #9cc6ff;
+  font-variant-numeric: tabular-nums;
+}
+
+#divemap-panel .wp-row-delete {
+  background: transparent;
+  color: #a88;
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
+  margin: 0;
+}
+
+#divemap-panel .wp-row-delete:hover {
+  color: #f88;
+  background: rgba(255, 100, 100, 0.15);
+}
+
+#divemap-panel .actions-row {
+  margin-top: 6px;
+}
+
+#divemap-panel button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#divemap-panel .guard-box {
+  padding: 8px 0;
+}
+
+#divemap-panel .guard-msg {
+  font-size: 12px;
+  color: #ffb84a;
+  margin-bottom: 8px;
+}
+
+#divemap-panel .guard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

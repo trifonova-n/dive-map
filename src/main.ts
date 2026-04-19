@@ -4,12 +4,11 @@ import { setupMobile, initMobile, startARMode, moveToCurrentLocation } from "./m
 import { runProjector, projectWaypointsAnchored } from "./projection";
 import { SegmentLabelManager } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
-import { patchMeasureTool } from "./measure-hooks";
+import { patchMeasureTool, setEditMode } from "./measure-hooks";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys } from "./hotkeys";
 import { createAuthPanel } from "./ui/auth-panel";
-import { createPlanPanel } from "./ui/plan-panel";
-import type { WaypointAPI } from "./api-client";
+import { createPlanPanel, type PlanPanelAPI } from "./ui/plan-panel";
 import "./ui/styles.css";
 
 /** Polls until Q3D.application.scene and .renderer are ready. */
@@ -95,19 +94,26 @@ async function initCustom(): Promise<void> {
     () => waypointMgr.isVisible()
   );
 
-  patchMeasureTool(app, waypointMgr, segmentMgr);
-  registerHotkeys(waypointMgr);
+  // Forward-reference so the patch and hotkeys can call into the panel
+  // once it's created below.
+  let planPanel: PlanPanelAPI | null = null;
+
+  patchMeasureTool(app, waypointMgr, segmentMgr, {
+    onWaypointAdded: () => planPanel?.markDirty(),
+  });
+  registerHotkeys(waypointMgr, {
+    onEscape: () => planPanel?.handleEscape() ?? false,
+  });
   centerCameraOnSceneWhenReady(app, config);
 
   // --- UI panels ---
   const panelContainer = document.getElementById("divemap-panel");
   if (!panelContainer) return;
 
-  const planPanel = createPlanPanel(panelContainer, {
+  planPanel = createPlanPanel(panelContainer, {
     exportWaypoints: () => waypointMgr.exportWaypoints(app),
-    importWaypoints: (waypoints: WaypointAPI[]) => {
+    importWaypoints: (waypoints) => {
       for (const wp of waypoints) {
-        // Convert WGS84 lat/lon back to scene world coordinates
         const worldPt = app.scene.toWorldCoordinates(
           { x: wp.longitude, y: wp.latitude, z: -wp.depth_m },
           true
@@ -119,13 +125,13 @@ async function initCustom(): Promise<void> {
     clearWaypoints: () => {
       app.measure.clear();
     },
+    setEditMode: (flag) => setEditMode(app, flag),
+    metersToFeet: config.metersToFeet,
   });
 
   createAuthPanel(panelContainer, {
-    onLogin: () => planPanel.update(),
-    onLogout: () => {
-      planPanel.update();
-    },
+    onLogin: () => planPanel?.update(),
+    onLogout: () => planPanel?.update(),
   });
 }
 

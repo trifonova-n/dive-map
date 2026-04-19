@@ -30,12 +30,19 @@ Swagger docs at `http://localhost:8000/docs`. Health check at `GET /health`.
 
 ```bash
 # Frontend (Vitest — 18 tests: CRS, segment math, config fallback)
-npm test
+npm test                         # run once
+npm run test:watch               # watch mode
+npm test -- crs                  # run a single file / filter by name
+
+# Type-check + production build
+npm run build                    # tsc --noEmit && vite build
 
 # Backend (pytest — 20 tests: auth, plans, waypoints, sites)
 # Requires PostGIS running (docker compose up db -d)
 cd backend && source .venv/bin/activate
 pytest tests/ -v
+pytest tests/test_auth.py -v     # single file
+pytest -k "login" -v             # filter by name
 ```
 
 The backend tests use a separate `divemap_test` database (created automatically on first run if the `divemap_test` DB exists; create it with `docker exec dive-map-db-1 psql -U divemap -d divemap -c "CREATE DATABASE divemap_test;"`).
