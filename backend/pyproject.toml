@@ -1,0 +1,21 @@
+[project]
+name = "dive-map-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pydantic[email]>=2.0",
+    "pydantic-settings>=2.7",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[project.optional-dependencies]
+dev = ["httpx>=0.28"]

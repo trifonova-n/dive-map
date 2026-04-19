@@ -3,5 +3,12 @@
 node_modules/
 dist/
 
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/app/__pycache__/
+**/__pycache__/
+*.pyc
+
 # Large generated scene data (regenerate from QGIS)
 data/index/scene.js
