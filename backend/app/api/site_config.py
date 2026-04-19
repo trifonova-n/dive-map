@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models.dive_site import DiveSite
+from ..models import DiveSite
 from ..schemas.dive_site import SiteConfigResponse
 
 router = APIRouter(prefix="/api/sites", tags=["sites"])

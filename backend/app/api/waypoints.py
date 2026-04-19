@@ -4,9 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..models.user import User
-from ..models.dive_plan import DivePlan
-from ..models.waypoint import Waypoint
+from ..models import User, DivePlan, Waypoint
 from ..schemas.waypoint import WaypointCreate, WaypointResponse, WaypointBulkSave
 
 router = APIRouter(prefix="/api/plans/{plan_id}/waypoints", tags=["waypoints"])

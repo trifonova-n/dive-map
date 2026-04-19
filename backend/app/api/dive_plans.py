@@ -5,8 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..models.user import User
-from ..models.dive_plan import DivePlan
+from ..models import User, DivePlan
 from ..schemas.dive_plan import DivePlanCreate, DivePlanResponse, DivePlanDetailResponse
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
