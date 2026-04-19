@@ -1,5 +1,7 @@
 .DS_Store
 .idea/
+node_modules/
+dist/
 
 # Large generated scene data (regenerate from QGIS)
 data/index/scene.js
