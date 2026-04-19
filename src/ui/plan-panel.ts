@@ -24,6 +24,8 @@ export interface PlanPanelAPI {
   markDirty: () => void;
   /** Returns true if Escape was handled (editing was active). */
   handleEscape: () => boolean;
+  /** Clears plan state tied to the previous session and re-renders. */
+  handleLogout: () => void;
 }
 
 let currentPlanId: number | null = null;
@@ -33,6 +35,7 @@ let unsavedChanges = false;
 let isDraft = false;
 let loadedWaypoints: api.WaypointAPI[] = [];
 let pendingExit: "browse" | "view" | null = null;
+let pendingSaveAfterLogin = false;
 
 export function createPlanPanel(
   container: HTMLElement,
@@ -40,17 +43,9 @@ export function createPlanPanel(
 ): PlanPanelAPI {
   const el = document.createElement("div");
   el.className = "panel-box";
-  el.style.display = "none";
   container.appendChild(el);
 
   async function render() {
-    if (!api.isLoggedIn()) {
-      el.style.display = "none";
-      resetStateForLogout();
-      return;
-    }
-    el.style.display = "block";
-
     if (pendingExit) {
       renderGuard();
     } else if (currentPlanId === null && !isDraft) {
@@ -60,10 +55,26 @@ export function createPlanPanel(
     } else {
       renderView();
     }
+
+    // If a save was queued pre-auth and the user has since logged in, retry it.
+    if (pendingSaveAfterLogin && api.isLoggedIn()) {
+      pendingSaveAfterLogin = false;
+      try {
+        await persistCurrentPlan();
+        await render();
+      } catch (e) {
+        const errEl = el.querySelector("#dm-plan-error") as HTMLElement | null;
+        if (errEl) {
+          errEl.textContent = (e as Error).message;
+          errEl.style.display = "block";
+        }
+      }
+    }
   }
 
   function resetStateForLogout() {
     if (editing) deps.setEditMode(false);
+    deps.clearWaypoints();
     currentPlanId = null;
     currentPlanName = "";
     editing = false;
@@ -71,26 +82,36 @@ export function createPlanPanel(
     isDraft = false;
     loadedWaypoints = [];
     pendingExit = null;
+    pendingSaveAfterLogin = false;
   }
 
   async function renderBrowse() {
+    const loggedIn = api.isLoggedIn();
     let plans: api.DivePlanAPI[] = [];
-    try {
-      plans = await api.listPlans();
-    } catch {
-      // Backend may be down
+    if (loggedIn) {
+      try {
+        plans = await api.listPlans();
+      } catch {
+        // Backend may be down
+      }
     }
 
-    const planListHtml = plans.length
-      ? plans
-          .map(
-            (p) =>
-              `<div class="plan-item" data-id="${p.id}">
+    let planListHtml: string;
+    if (!loggedIn) {
+      planListHtml =
+        '<div class="muted-line">Sign in to see your saved plans</div>';
+    } else if (plans.length) {
+      planListHtml = plans
+        .map(
+          (p) =>
+            `<div class="plan-item" data-id="${p.id}">
                 <span class="plan-name">${escapeHtml(p.name)}</span>
               </div>`
-          )
-          .join("")
-      : '<div class="muted-line">No saved plans yet</div>';
+        )
+        .join("");
+    } else {
+      planListHtml = '<div class="muted-line">No saved plans yet</div>';
+    }
 
     el.innerHTML = `
       <h3>Dive Plans</h3>
@@ -329,6 +350,11 @@ export function createPlanPanel(
    * callers can surface the error inline.
    */
   async function persistCurrentPlan(): Promise<void> {
+    if (!api.isLoggedIn()) {
+      pendingSaveAfterLogin = true;
+      (document.getElementById("dm-email") as HTMLInputElement | null)?.focus();
+      throw new Error("Sign in or register below to save your plan.");
+    }
     if (isDraft) {
       const name = currentPlanName.trim();
       if (!name) {
@@ -376,6 +402,7 @@ export function createPlanPanel(
       currentPlanName = "";
       loadedWaypoints = [];
       isDraft = false;
+      pendingSaveAfterLogin = false;
     }
     render();
   }
@@ -403,6 +430,10 @@ export function createPlanPanel(
       if (!editing) return false;
       requestExit("view");
       return true;
+    },
+    handleLogout: () => {
+      resetStateForLogout();
+      render();
     },
   };
 }

@@ -131,7 +131,7 @@ async function initCustom(): Promise<void> {
 
   createAuthPanel(panelContainer, {
     onLogin: () => planPanel?.update(),
-    onLogout: () => planPanel?.update(),
+    onLogout: () => planPanel?.handleLogout(),
   });
 }
 
