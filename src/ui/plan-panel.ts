@@ -119,6 +119,8 @@ export function createPlanPanel(
       ${planListHtml}
       <div class="plan-create-form">
         <button class="primary" id="dm-create-plan">+ New dive plan</button>
+        <button class="secondary" id="dm-open-csv">Open CSV</button>
+        <input type="file" id="dm-open-csv-file" accept=".csv,text/csv" style="display:none" />
       </div>
       <div class="error" id="dm-plan-error" style="display:none"></div>
     `;
@@ -156,6 +158,38 @@ export function createPlanPanel(
       editing = true;
       deps.setEditMode(true);
       render();
+    });
+
+    const fileInput = el.querySelector(
+      "#dm-open-csv-file"
+    ) as HTMLInputElement;
+    el.querySelector("#dm-open-csv")!.addEventListener("click", () => {
+      fileInput.value = "";
+      fileInput.click();
+    });
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const waypoints = parsePlanCsv(text, deps.metersToFeet);
+        if (!waypoints.length) {
+          showError("No waypoints found in CSV.");
+          return;
+        }
+        deps.clearWaypoints();
+        deps.importWaypoints(waypoints);
+        currentPlanId = null;
+        currentPlanName = file.name.replace(/\.csv$/i, "");
+        loadedWaypoints = [];
+        isDraft = true;
+        unsavedChanges = true;
+        editing = true;
+        deps.setEditMode(true);
+        render();
+      } catch (e) {
+        showError((e as Error).message);
+      }
     });
   }
 
@@ -477,6 +511,42 @@ function haversine(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function parsePlanCsv(text: string, metersToFeet: number): WaypointInput[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 2) throw new Error("CSV is empty.");
+
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const find = (...names: string[]) =>
+    headers.findIndex((h) => names.includes(h));
+  const latIdx = find("latitude", "lat");
+  const lonIdx = find("longitude", "lon", "lng");
+  const depthFtIdx = find("depth_ft", "depth (ft)", "depth ft");
+  const depthMIdx = find("depth_m", "depth (m)", "depth m", "depth");
+
+  if (latIdx < 0 || lonIdx < 0)
+    throw new Error("CSV must have latitude and longitude columns.");
+  if (depthFtIdx < 0 && depthMIdx < 0)
+    throw new Error("CSV must have a depth_ft or depth_m column.");
+
+  const waypoints: WaypointInput[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(",").map((c) => c.trim());
+    const lat = parseFloat(cells[latIdx]);
+    const lon = parseFloat(cells[lonIdx]);
+    const depth_m =
+      depthMIdx >= 0
+        ? parseFloat(cells[depthMIdx])
+        : parseFloat(cells[depthFtIdx]) / metersToFeet;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(depth_m))
+      throw new Error(`Row ${i + 1}: could not parse lat/lon/depth.`);
+    waypoints.push({ latitude: lat, longitude: lon, depth_m });
+  }
+  return waypoints;
 }
 
 function buildPlanCsv(
