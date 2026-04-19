@@ -1,0 +1,26 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Backend API + auth — same origin, so no CORS needed
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle /auth/* {
+		reverse_proxy backend:8000
+	}
+
+	# Large media (scene.js, photos, future video) — served from bind mount
+	handle_path /data/* {
+		root * /srv/media
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Built frontend
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+}
