@@ -2,6 +2,22 @@ import type { SiteConfig } from "./config";
 import { makeDivLabel } from "./labels";
 import type { LabelRecord } from "./projection";
 
+/** Pure computation: distance in feet and magnetic heading between two 3D points. */
+export function computeSegment(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number },
+  metersToFeet: number,
+  magDeclination: number
+): { distFt: number; heading: number } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dz = b.z - a.z;
+  const distFt = Math.sqrt(dx * dx + dy * dy + dz * dz) * metersToFeet;
+  let heading = (Math.atan2(dx, dy) * 180) / Math.PI;
+  heading = (heading + magDeclination + 360) % 360;
+  return { distFt, heading };
+}
+
 /**
  * Manages segment labels — distance (ft) + magnetic heading displayed
  * at the midpoint between consecutive waypoints.
@@ -19,14 +35,9 @@ export class SegmentLabelManager {
     const a = mg.children[mg.children.length - 2].position;
     const b = mg.children[mg.children.length - 1].position;
 
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const dz = b.z - a.z;
-    const distFt =
-      Math.sqrt(dx * dx + dy * dy + dz * dz) * this.config.metersToFeet;
-
-    let heading = (Math.atan2(dx, dy) * 180) / Math.PI;
-    heading = (heading + this.config.magDeclination + 360) % 360;
+    const { distFt, heading } = computeSegment(
+      a, b, this.config.metersToFeet, this.config.magDeclination
+    );
 
     const mid = new THREE.Vector3(
       (a.x + b.x) / 2,
