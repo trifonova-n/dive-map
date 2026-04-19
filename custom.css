@@ -24,3 +24,121 @@
 canvas, #container, .viewer {
   z-index: 0 !important;
 }
+
+/* ── Restyle Qgis2threejs popup to match dark translucent panel theme ── */
+
+#popup {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px);
+  border-radius: 8px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5) !important;
+  color: #eee;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+}
+
+#popupbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+#closebtn {
+  color: #aaa !important;
+  font-size: 18px !important;
+}
+
+#closebtn:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 4px;
+}
+
+#popupbody {
+  color: #eee;
+}
+
+#popupbody table caption {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffd !important;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 3px 8px !important;
+}
+
+#popupbody table td {
+  color: #ddd;
+  padding: 3px 8px !important;
+}
+
+#qr_layername_table tr,
+#qr_coords_table tr {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+#qr_attrs_table tr:nth-child(odd) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+table.measure tr:nth-child(odd) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.action-btn {
+  background: rgba(74, 158, 255, 0.2) !important;
+  border: 1px solid rgba(74, 158, 255, 0.4) !important;
+  border-radius: 4px !important;
+  color: #8cf !important;
+  padding: 4px 8px !important;
+  margin: 4px 2px !important;
+  font-size: 12px !important;
+  font-weight: 600;
+}
+
+.action-btn:hover {
+  background: rgba(74, 158, 255, 0.35) !important;
+}
+
+.action-zoom {
+  filter: invert(80%) !important;
+}
+
+.action-zoom:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  filter: invert(100%) !important;
+}
+
+/* Page info / about section */
+#pageinfo {
+  color: #ddd;
+}
+
+#pageinfo > h1 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffd !important;
+  border-radius: 4px;
+  padding: 3px 8px !important;
+}
+
+#usage tr:nth-child(odd) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+#about a {
+  color: #8cf;
+}
+
+/* Layer panel */
+#layerpanel {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px);
+  border-radius: 8px !important;
+  color: #eee;
+}
+
+/* Settings panel */
+#settings {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px);
+  border-radius: 8px !important;
+  color: #eee;
+  font-family: system-ui, sans-serif;
+}
