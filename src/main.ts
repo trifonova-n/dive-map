@@ -7,6 +7,10 @@ import { WaypointLabelManager } from "./waypoint-labels";
 import { patchMeasureTool } from "./measure-hooks";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys } from "./hotkeys";
+import { createAuthPanel } from "./ui/auth-panel";
+import { createPlanPanel } from "./ui/plan-panel";
+import type { WaypointAPI } from "./api-client";
+import "./ui/styles.css";
 
 /** Polls until Q3D.application.scene and .renderer are ready. */
 function waitForQ3D(): Promise<void> {
@@ -26,11 +30,9 @@ function waitForQ3D(): Promise<void> {
 
 /**
  * Bootstrap: configure Q3D, initialize the viewer and mobile controls,
- * then start loading the scene. This replaces the inline <script> block
- * and the mobile.js <script> tag that were previously in index.html.
+ * then start loading the scene.
  */
 function bootstrap(): void {
-  // Q3D configuration (was inline in index.html)
   Q3D.Config.coord.latlon = true;
   Q3D.Config.viewpoint = {
     lookAt: { x: 598716.3893947866, y: 4052826.0684010955, z: 0.0 },
@@ -38,10 +40,8 @@ function bootstrap(): void {
   };
   Q3D.Config.localMode = true;
 
-  // Mobile/AR setup — patches app methods, sets Q3D.Config.AR defaults
   setupMobile();
 
-  // Override AR defaults with site-specific values
   Q3D.Config.AR.MND = 12.0;
   Q3D.Config.northArrow.enabled = true;
   Q3D.Config.northArrow.color = 0xe31a1c;
@@ -49,35 +49,28 @@ function bootstrap(): void {
   const container = document.getElementById("view")!;
   const app = Q3D.application;
 
-  // Expose `app` globally — scene.js (loaded by loadSceneFile) calls
-  // `app.loadJSONObject(...)` expecting `app` on the global scope.
+  // Expose `app` globally — scene.js calls `app.loadJSONObject(...)`
   (window as unknown as Record<string, unknown>).app = app;
 
   app.init(container);
   initMobile();
 
-  // Load the scene
   app.loadSceneFile(
     "./data/index/scene.js",
     function () {
-      // Scene file loaded
       app.start();
-
       if ("AR" in app.urlParams) {
         (document.getElementById("ar-checkbox") as HTMLInputElement).checked = true;
         startARMode();
         moveToCurrentLocation();
       }
     },
-    function () {
-      // All relevant files loaded
-    }
+    function () {}
   );
 }
 
 /**
- * Initialize custom dive-map enhancements (labels, measure hooks, hotkeys).
- * Waits for Q3D scene to be fully ready.
+ * Initialize custom enhancements + UI panels.
  */
 async function initCustom(): Promise<void> {
   await waitForQ3D();
@@ -92,11 +85,9 @@ async function initCustom(): Promise<void> {
 
   console.log("\u2705 custom modules loaded (bright-line edition)");
 
-  // Segment labels: distance + heading at midpoints
   const segmentMgr = new SegmentLabelManager(config);
   runProjector(segmentMgr.labels, app);
 
-  // Waypoint labels: lat/lon/depth at each marker
   const waypointMgr = new WaypointLabelManager(config);
   projectWaypointsAnchored(
     waypointMgr.labels,
@@ -104,18 +95,39 @@ async function initCustom(): Promise<void> {
     () => waypointMgr.isVisible()
   );
 
-  // Hook measure tool to sync labels
   patchMeasureTool(app, waypointMgr, segmentMgr);
-
-  // Shift+L toggles waypoint labels
   registerHotkeys(waypointMgr);
-
-  // Auto-center camera on scene once meshes are visible
   centerCameraOnSceneWhenReady(app, config);
+
+  // --- UI panels ---
+  const panelContainer = document.getElementById("divemap-panel");
+  if (!panelContainer) return;
+
+  const planPanel = createPlanPanel(panelContainer, {
+    exportWaypoints: () => waypointMgr.exportWaypoints(app),
+    importWaypoints: (waypoints: WaypointAPI[]) => {
+      for (const wp of waypoints) {
+        // Convert WGS84 lat/lon back to scene world coordinates
+        const worldPt = app.scene.toWorldCoordinates(
+          { x: wp.longitude, y: wp.latitude, z: -wp.depth_m },
+          true
+        );
+        const pt = new THREE.Vector3(worldPt.x, worldPt.y, worldPt.z);
+        app.measure.addPoint(pt);
+      }
+    },
+    clearWaypoints: () => {
+      app.measure.clear();
+    },
+  });
+
+  createAuthPanel(panelContainer, {
+    onLogin: () => planPanel.update(),
+    onLogout: () => {
+      planPanel.update();
+    },
+  });
 }
 
-// Run bootstrap immediately (module is deferred, runs after DOM parse)
 bootstrap();
-
-// Init custom enhancements once scene is ready
 initCustom();

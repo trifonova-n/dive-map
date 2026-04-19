@@ -79,4 +79,29 @@ export class WaypointLabelManager {
     for (const rec of this.labels.values()) rec.div.remove();
     this.labels.clear();
   }
+
+  /** Export current waypoints as an array for saving to the backend. */
+  exportWaypoints(app: Q3DApplication): Array<{
+    seq: number;
+    latitude: number;
+    longitude: number;
+    depth_m: number;
+  }> {
+    const result: Array<{
+      seq: number;
+      latitude: number;
+      longitude: number;
+      depth_m: number;
+    }> = [];
+    let seq = 1;
+    for (const { marker } of this.labels.values()) {
+      const mapPt = app.scene.toMapCoordinates
+        ? app.scene.toMapCoordinates(marker.position as THREE.Vector3)
+        : marker.position;
+      const { lon, lat } = toLonLatXY(mapPt.x, mapPt.y, app.scene.userData);
+      const depth_m = Math.abs(mapPt.z);
+      result.push({ seq: seq++, latitude: lat, longitude: lon, depth_m });
+    }
+    return result;
+  }
 }

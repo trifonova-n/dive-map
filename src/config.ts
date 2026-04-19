@@ -1,3 +1,5 @@
+import { getSiteConfig } from "./api-client";
+
 export interface SiteConfig {
   magDeclination: number;
   midLabelLift: number;
@@ -16,14 +18,32 @@ const DEFAULTS: SiteConfig = {
   cameraDistanceFactor: 1.5,
 };
 
+/**
+ * Load site config with triple fallback:
+ *   1. Backend API (GET /api/sites/1/config)
+ *   2. Static site-config.json
+ *   3. Hardcoded defaults
+ */
 export async function loadConfig(): Promise<SiteConfig> {
+  // Try backend API first
+  try {
+    const site = await getSiteConfig(1);
+    return {
+      ...DEFAULTS,
+      magDeclination: site.mag_declination,
+    };
+  } catch {
+    // Backend not available, fall through
+  }
+
+  // Try static file
   try {
     const resp = await fetch("./site-config.json");
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     return { ...DEFAULTS, ...json };
   } catch (e) {
-    console.warn("Failed to load site-config.json, using defaults", e);
+    console.warn("Failed to load site config, using defaults", e);
     return { ...DEFAULTS };
   }
 }
