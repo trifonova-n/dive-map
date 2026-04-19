@@ -176,12 +176,6 @@ app.loadSceneFile("./data/index/scene.js", function (scene) {
 
 <!-- Custom enhancements -->
 <link rel="stylesheet" href="custom.css">
-<script>
-  (function waitForQ3D(){
-    if (window.Q3D && Q3D.application && Q3D.application.scene && Q3D.application.renderer) {
-      var s=document.createElement('script'); s.src='custom.js'; document.body.appendChild(s);
-    } else { requestAnimationFrame(waitForQ3D); }
-  })();
-</script>
+<script type="module" src="/src/main.ts"></script>
 </body>
 </html>
