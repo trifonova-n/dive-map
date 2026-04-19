@@ -421,10 +421,8 @@ export function createPlanPanel(
   return {
     update: render,
     markDirty: () => {
-      if (!unsavedChanges) {
-        unsavedChanges = true;
-        render();
-      }
+      unsavedChanges = true;
+      render();
     },
     handleEscape: () => {
       if (!editing) return false;
