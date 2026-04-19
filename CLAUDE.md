@@ -2,28 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Running the app
+## Running the full stack
 
-### Frontend (Vite + TypeScript)
+Start all three components (database, backend, frontend):
 
-```
-npm install
-npm run dev          # Vite dev server at localhost:5173
-npm run build        # type-check + production build → dist/
-npx tsc --noEmit     # type-check only
-```
+```bash
+# 1. Database (PostGIS)
+docker compose up db -d
 
-### Backend (FastAPI + PostGIS)
-
-```
-docker compose up db -d                              # start PostGIS
-cd backend && python3 -m venv .venv && source .venv/bin/activate
+# 2. Backend (first time: create venv + install + migrate)
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-alembic upgrade head                                 # run migrations
-uvicorn app.main:app --reload --port 8000            # API at localhost:8000
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+
+# 3. Frontend (separate terminal)
+npm install
+npm run dev
 ```
+
+Open `http://localhost:5173`. The Vite dev server proxies `/api` and `/auth` to the backend at `localhost:8000`.
 
 Swagger docs at `http://localhost:8000/docs`. Health check at `GET /health`.
+
+### Running tests
+
+```bash
+# Frontend (Vitest — 18 tests: CRS, segment math, config fallback)
+npm test
+
+# Backend (pytest — 20 tests: auth, plans, waypoints, sites)
+# Requires PostGIS running (docker compose up db -d)
+cd backend && source .venv/bin/activate
+pytest tests/ -v
+```
+
+The backend tests use a separate `divemap_test` database (created automatically on first run if the `divemap_test` DB exists; create it with `docker exec dive-map-db-1 psql -U divemap -d divemap -c "CREATE DATABASE divemap_test;"`).
 
 ## Architecture
 
@@ -45,7 +60,7 @@ A 3D dive route planner for Point Lobos / Monterey Bay bathymetry built on a Qgi
 |--------|---------------|
 | `main.ts` | Bootstrap + orchestration; exposes `app` globally for scene.js |
 | `mobile.ts` | AR mode, geolocation, button wiring (converted from mobile.js) |
-| `config.ts` | `SiteConfig` interface + `loadConfig()` from `site-config.json` |
+| `config.ts` | `SiteConfig` interface + `loadConfig()` with triple fallback (API → JSON → defaults) |
 | `labels.ts` | `makeDivLabel()` — creates HTML overlay divs |
 | `crs.ts` | `toLonLatXY()` — CRS conversion via proj4 / fallbacks |
 | `projection.ts` | rAF loops projecting 3D positions to 2D screen coords |
@@ -54,9 +69,12 @@ A 3D dive route planner for Point Lobos / Monterey Bay bathymetry built on a Qgi
 | `measure-hooks.ts` | `patchMeasureTool()` — monkey-patches `app.measure` to sync labels |
 | `camera.ts` | `centerCameraOnSceneWhenReady()` — one-shot bounding box camera fit |
 | `hotkeys.ts` | `registerHotkeys()` — Shift+L handler (capture phase) |
+| `api-client.ts` | Typed fetch wrapper for backend API; JWT token management in localStorage |
+| `ui/auth-panel.ts` | Login/register/logout panel |
+| `ui/plan-panel.ts` | Dive plan list, create, load, save, clear |
 | `types.ts` | Ambient type declarations for THREE, Q3D, proj4 globals |
 
-Site-specific constants (magnetic declination, line brightness, unit conversion, etc.) are in `site-config.json`, loaded by `src/config.ts` with hardcoded fallback defaults.
+Site-specific constants (magnetic declination, line brightness, unit conversion, etc.) live in the `dive_sites` DB table, falling back to `site-config.json`, then hardcoded defaults.
 
 ### Backend (`backend/`)
 
@@ -69,7 +87,7 @@ FastAPI + async SQLAlchemy 2.0 + PostGIS. JWT auth (bcrypt passwords, HS256 toke
 - `GET/POST /api/plans/{id}/waypoints/` → waypoint CRUD (authed)
 - `PUT /api/plans/{id}/waypoints/` → bulk replace waypoints
 
-**Models:** `User`, `DiveSite`, `DivePlan`, `Waypoint` — defined in `backend/app/models/`. Migrations via Alembic (`backend/alembic/`). The initial migration seeds a "Point Lobos" dive site.
+**Models:** `User`, `DiveSite`, `DivePlan`, `Waypoint` — defined in `backend/app/models.py`. Migrations via Alembic (`backend/alembic/`). The initial migration seeds a "Point Lobos" dive site.
 
 **Config:** `backend/app/config.py` reads env vars prefixed `DIVEMAP_` (e.g. `DIVEMAP_DATABASE_URL`, `DIVEMAP_JWT_SECRET`). Defaults point to the Docker Compose PostGIS instance.
 
