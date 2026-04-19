@@ -13,6 +13,7 @@ export interface PlanPanelDeps {
     longitude: number;
     depth_m: number;
   }>;
+  exportSegments: () => Array<{ distFt: number; heading: number }>;
   importWaypoints: (waypoints: WaypointInput[]) => void;
   clearWaypoints: () => void;
   setEditMode: (flag: boolean) => void;
@@ -167,6 +168,7 @@ export function createPlanPanel(
       <div class="actions-row">
         <button class="primary" id="dm-edit">Edit route</button>
         <button class="secondary" id="dm-save" ${unsavedChanges ? "" : "disabled"}>Save</button>
+        <button class="secondary" id="dm-export-csv" ${wps.length ? "" : "disabled"}>Export CSV</button>
       </div>
       <div class="error" id="dm-plan-error" style="display:none"></div>
     `;
@@ -177,6 +179,7 @@ export function createPlanPanel(
       render();
     });
     wireSave();
+    wireExportCsv();
   }
 
   function renderEdit() {
@@ -192,6 +195,7 @@ export function createPlanPanel(
       <div class="actions-row">
         <button class="primary" id="dm-done">Done</button>
         <button class="secondary" id="dm-save" ${unsavedChanges ? "" : "disabled"}>Save</button>
+        <button class="secondary" id="dm-export-csv" ${wps.length ? "" : "disabled"}>Export CSV</button>
       </div>
       <div class="error" id="dm-plan-error" style="display:none"></div>
     `;
@@ -212,6 +216,7 @@ export function createPlanPanel(
       });
     });
     wireSave();
+    wireExportCsv();
   }
 
   function renderGuard() {
@@ -343,6 +348,16 @@ export function createPlanPanel(
     });
   }
 
+  function wireExportCsv() {
+    el.querySelector("#dm-export-csv")?.addEventListener("click", () => {
+      const wps = deps.exportWaypoints();
+      if (!wps.length) return;
+      const segments = deps.exportSegments();
+      const csv = buildPlanCsv(wps, segments, deps.metersToFeet);
+      downloadCsv(csvFilename(currentPlanName, isDraft), csv);
+    });
+  }
+
   /**
    * Persists the current plan to the backend. If it's a draft, creates the
    * plan row first; then replaces its waypoints with the current export.
@@ -462,6 +477,44 @@ function haversine(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function buildPlanCsv(
+  wps: Array<{ seq: number; latitude: number; longitude: number; depth_m: number }>,
+  segments: Array<{ distFt: number; heading: number }>,
+  metersToFeet: number
+): string {
+  const header =
+    "seq,latitude,longitude,depth_ft,distance_to_next_ft,heading_to_next_magnetic";
+  const rows = wps.map((w, i) => {
+    const seg = segments[i];
+    const depthFt = (w.depth_m * metersToFeet).toFixed(1);
+    const dist = seg ? seg.distFt.toFixed(1) : "";
+    const hdg = seg ? seg.heading.toFixed(1) : "";
+    return `${w.seq},${w.latitude.toFixed(6)},${w.longitude.toFixed(6)},${depthFt},${dist},${hdg}`;
+  });
+  return [header, ...rows].join("\n") + "\n";
+}
+
+function csvFilename(name: string, isDraft: boolean): string {
+  const base = name.trim() || (isDraft ? "draft-plan" : "dive-plan");
+  const slug = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `${slug || "dive-plan"}.csv`;
+}
+
+function downloadCsv(filename: string, csv: string): void {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function escapeHtml(s: string): string {

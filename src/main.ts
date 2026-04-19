@@ -2,7 +2,7 @@ import "./types";
 import { loadConfig } from "./config";
 import { setupMobile, initMobile, startARMode, moveToCurrentLocation } from "./mobile";
 import { runProjector, projectWaypointsAnchored } from "./projection";
-import { SegmentLabelManager } from "./segment-labels";
+import { SegmentLabelManager, computeSegment } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
 import { patchMeasureTool, setEditMode } from "./measure-hooks";
 import { centerCameraOnSceneWhenReady } from "./camera";
@@ -112,6 +112,22 @@ async function initCustom(): Promise<void> {
 
   planPanel = createPlanPanel(panelContainer, {
     exportWaypoints: () => waypointMgr.exportWaypoints(app),
+    exportSegments: () => {
+      const mg = app.measure?.markerGroup;
+      if (!mg || mg.children.length < 2) return [];
+      const out: Array<{ distFt: number; heading: number }> = [];
+      for (let i = 1; i < mg.children.length; i++) {
+        out.push(
+          computeSegment(
+            mg.children[i - 1].position,
+            mg.children[i].position,
+            config.metersToFeet,
+            config.magDeclination
+          )
+        );
+      }
+      return out;
+    },
     importWaypoints: (waypoints) => {
       for (const wp of waypoints) {
         const worldPt = app.scene.toWorldCoordinates(
