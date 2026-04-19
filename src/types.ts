@@ -1,5 +1,4 @@
 // Ambient type declarations for global libraries loaded via <script> tags.
-// Minimal type surface — only what custom.js and mobile.js actually use.
 
 export {};
 

@@ -1,7 +1,7 @@
 /**
  * Creates floating 2D HTML label elements that overlay the 3D scene.
  * Used for both waypoint (lat/lon/depth) and segment (distance/heading) labels.
- * Styling is controlled by the `.label` class in custom.css.
+ * Styling is controlled by the `.label` class in src/styles/custom.css.
  */
 export function makeDivLabel(
   text: string,

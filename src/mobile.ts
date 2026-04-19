@@ -1,4 +1,4 @@
-// Typed ES module conversion of mobile.js
+// AR mode, geolocation, and button wiring.
 // Original: (C) 2018 Minoru Akagi, SPDX-License-Identifier: MIT
 
 import "./types";
