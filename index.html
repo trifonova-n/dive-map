@@ -14,6 +14,8 @@
 <script src="./threejs/ViewHelper.js"></script>
 <script src="./proj4js/proj4.js"></script>
 <script src="./Qgis2threejs.js"></script>
+<!-- Expose Q3DGroup (top-level class declaration doesn't attach to window in classic scripts). -->
+<script>window.Q3DGroup = Q3DGroup;</script>
 <script src="./threejs/DeviceOrientationControls.js"></script>
 </head>
 <body>
