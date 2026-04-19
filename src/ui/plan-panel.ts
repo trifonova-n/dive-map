@@ -96,8 +96,7 @@ export function createPlanPanel(
       <h3>Dive Plans</h3>
       ${planListHtml}
       <div class="plan-create-form">
-        <input type="text" id="dm-plan-name" placeholder="New plan name" />
-        <button class="primary" id="dm-create-plan">Create</button>
+        <button class="primary" id="dm-create-plan">+ New dive plan</button>
       </div>
       <div class="error" id="dm-plan-error" style="display:none"></div>
     `;
@@ -124,13 +123,11 @@ export function createPlanPanel(
     });
 
     el.querySelector("#dm-create-plan")!.addEventListener("click", () => {
-      const nameEl = el.querySelector("#dm-plan-name") as HTMLInputElement;
-      const name = nameEl.value.trim();
-      if (!name) return;
-      // Create a local draft — not persisted until the user hits Save.
+      // Create a nameless draft — name and backend persistence are deferred
+      // until the user chooses to save.
       deps.clearWaypoints();
       currentPlanId = null;
-      currentPlanName = name;
+      currentPlanName = "";
       loadedWaypoints = [];
       isDraft = true;
       unsavedChanges = true;
@@ -242,12 +239,25 @@ export function createPlanPanel(
     const draftTag = isDraft
       ? '<span class="draft-tag" title="Not saved to your account yet">draft</span>'
       : "";
+    const titleSlot = isDraft
+      ? `<input type="text" id="dm-plan-name-input" class="plan-title-input"
+           placeholder="Untitled plan" value="${escapeAttr(currentPlanName)}"
+           aria-label="Plan name" />${draftTag}${dot}`
+      : `<span class="plan-title">${escapeHtml(currentPlanName)}${dot}</span>`;
     return `
       <div class="plan-header">
         <button class="plan-back" id="dm-back" aria-label="Back">←</button>
-        <span class="plan-title">${escapeHtml(currentPlanName)}${draftTag}${dot}</span>
+        ${titleSlot}
       </div>
     `;
+  }
+
+  function wireDraftNameInput() {
+    const input = el.querySelector("#dm-plan-name-input") as HTMLInputElement | null;
+    if (!input) return;
+    input.addEventListener("input", () => {
+      currentPlanName = input.value;
+    });
   }
 
   function summaryStripHtml(
@@ -294,6 +304,7 @@ export function createPlanPanel(
     el.querySelector("#dm-back")!.addEventListener("click", () =>
       requestExit("browse")
     );
+    wireDraftNameInput();
   }
 
   function wireSave() {
@@ -319,7 +330,16 @@ export function createPlanPanel(
    */
   async function persistCurrentPlan(): Promise<void> {
     if (isDraft) {
-      const plan = await api.createPlan(1, currentPlanName); // site_id=1 (Point Lobos)
+      const name = currentPlanName.trim();
+      if (!name) {
+        const input = el.querySelector(
+          "#dm-plan-name-input"
+        ) as HTMLInputElement | null;
+        input?.focus();
+        throw new Error("Name your plan before saving.");
+      }
+      currentPlanName = name;
+      const plan = await api.createPlan(1, name); // site_id=1 (Point Lobos)
       currentPlanId = plan.id;
       isDraft = false;
     }
@@ -419,4 +439,8 @@ function escapeHtml(s: string): string {
   const div = document.createElement("div");
   div.textContent = s;
   return div.innerHTML;
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }

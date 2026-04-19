@@ -144,6 +144,32 @@
   white-space: nowrap;
 }
 
+#divemap-panel .plan-title-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 3px 6px;
+  margin: 0;
+  width: auto;
+}
+
+#divemap-panel .plan-title-input::placeholder {
+  color: #888;
+  font-weight: 400;
+  font-style: italic;
+}
+
+#divemap-panel .plan-title-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 #divemap-panel .unsaved-dot {
   display: inline-block;
   width: 7px;
