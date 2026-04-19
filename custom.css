@@ -1,0 +1,26 @@
+/* === custom.css ===
+   Styles for distance–heading labels on 3D map
+   Qgis2threejs v2.8 compatible
+*/
+
+.label {
+  position: absolute;
+  z-index: 100000;          /* keep above all 3D canvas layers */
+  color: yellow;
+  background: rgba(0, 0, 0, 0.7);   /* semi-trasparent background */
+  padding: 2px 4px !important;
+  border-radius: 8px;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 11px !important;
+  line-height: 1.2em;
+  white-space: pre;          /* preserves the \n in text */
+  text-shadow: 1px 1px 3px black; /* make text visible on light background */
+  pointer-events: none;      /* don’t block mouse interaction with map */
+  transform: translate(-50%, -50%);  /* center at projected point */
+}
+
+/* Make sure labels float above the WebGL canvas */
+canvas, #container, .viewer {
+  z-index: 0 !important;
+}
