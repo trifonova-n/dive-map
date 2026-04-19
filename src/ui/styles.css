@@ -154,6 +154,20 @@
   vertical-align: middle;
 }
 
+#divemap-panel .draft-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1a1a1a;
+  background: #ffb84a;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 #divemap-panel .summary-strip {
   font-size: 11px;
   color: #aaa;

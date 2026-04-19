@@ -30,6 +30,7 @@ let currentPlanId: number | null = null;
 let currentPlanName = "";
 let editing = false;
 let unsavedChanges = false;
+let isDraft = false;
 let loadedWaypoints: api.WaypointAPI[] = [];
 let pendingExit: "browse" | "view" | null = null;
 
@@ -52,7 +53,7 @@ export function createPlanPanel(
 
     if (pendingExit) {
       renderGuard();
-    } else if (currentPlanId === null) {
+    } else if (currentPlanId === null && !isDraft) {
       await renderBrowse();
     } else if (editing) {
       renderEdit();
@@ -67,6 +68,7 @@ export function createPlanPanel(
     currentPlanName = "";
     editing = false;
     unsavedChanges = false;
+    isDraft = false;
     loadedWaypoints = [];
     pendingExit = null;
   }
@@ -121,22 +123,20 @@ export function createPlanPanel(
       });
     });
 
-    el.querySelector("#dm-create-plan")!.addEventListener("click", async () => {
+    el.querySelector("#dm-create-plan")!.addEventListener("click", () => {
       const nameEl = el.querySelector("#dm-plan-name") as HTMLInputElement;
       const name = nameEl.value.trim();
       if (!name) return;
-      try {
-        const plan = await api.createPlan(1, name); // site_id=1 (Point Lobos)
-        deps.clearWaypoints();
-        currentPlanId = plan.id;
-        currentPlanName = plan.name;
-        loadedWaypoints = [];
-        editing = false;
-        unsavedChanges = false;
-        render();
-      } catch (e) {
-        showError((e as Error).message);
-      }
+      // Create a local draft — not persisted until the user hits Save.
+      deps.clearWaypoints();
+      currentPlanId = null;
+      currentPlanName = name;
+      loadedWaypoints = [];
+      isDraft = true;
+      unsavedChanges = true;
+      editing = true;
+      deps.setEditMode(true);
+      render();
     });
   }
 
@@ -217,19 +217,14 @@ export function createPlanPanel(
       deps.clearWaypoints();
       if (loadedWaypoints.length) deps.importWaypoints(loadedWaypoints);
       unsavedChanges = false;
-      finishExit(pendingExit);
+      // A discarded draft has nothing to return to — always bounce to Browse.
+      finishExit(isDraft ? "browse" : pendingExit);
     });
     el.querySelector("#dm-guard-save")!.addEventListener(
       "click",
       async () => {
-        if (!currentPlanId) return finishExit(pendingExit);
         try {
-          const saved = await api.saveWaypoints(
-            currentPlanId,
-            deps.exportWaypoints()
-          );
-          loadedWaypoints = saved;
-          unsavedChanges = false;
+          await persistCurrentPlan();
           finishExit(pendingExit);
         } catch (e) {
           const errEl = el.querySelector("#dm-plan-error") as HTMLElement;
@@ -244,10 +239,13 @@ export function createPlanPanel(
     const dot = unsavedChanges
       ? '<span class="unsaved-dot" title="Unsaved changes"></span>'
       : "";
+    const draftTag = isDraft
+      ? '<span class="draft-tag" title="Not saved to your account yet">draft</span>'
+      : "";
     return `
       <div class="plan-header">
         <button class="plan-back" id="dm-back" aria-label="Back">←</button>
-        <span class="plan-title">${escapeHtml(currentPlanName)}${dot}</span>
+        <span class="plan-title">${escapeHtml(currentPlanName)}${draftTag}${dot}</span>
       </div>
     `;
   }
@@ -301,14 +299,9 @@ export function createPlanPanel(
   function wireSave() {
     const saveBtn = el.querySelector("#dm-save") as HTMLButtonElement;
     saveBtn.addEventListener("click", async () => {
-      if (!currentPlanId || !unsavedChanges) return;
+      if (!unsavedChanges) return;
       try {
-        const saved = await api.saveWaypoints(
-          currentPlanId,
-          deps.exportWaypoints()
-        );
-        loadedWaypoints = saved;
-        unsavedChanges = false;
+        await persistCurrentPlan();
         render();
       } catch (e) {
         const errEl = el.querySelector("#dm-plan-error") as HTMLElement;
@@ -318,13 +311,37 @@ export function createPlanPanel(
     });
   }
 
+  /**
+   * Persists the current plan to the backend. If it's a draft, creates the
+   * plan row first; then replaces its waypoints with the current export.
+   * Clears isDraft / unsavedChanges on success. Throws on API failure so
+   * callers can surface the error inline.
+   */
+  async function persistCurrentPlan(): Promise<void> {
+    if (isDraft) {
+      const plan = await api.createPlan(1, currentPlanName); // site_id=1 (Point Lobos)
+      currentPlanId = plan.id;
+      isDraft = false;
+    }
+    if (currentPlanId === null) return;
+    const saved = await api.saveWaypoints(
+      currentPlanId,
+      deps.exportWaypoints()
+    );
+    loadedWaypoints = saved;
+    unsavedChanges = false;
+  }
+
   function requestExit(target: "browse" | "view") {
+    // A draft with no backend record can't land in View — force Browse and
+    // always confirm, since leaving without saving loses the plan entirely.
+    const actualTarget = isDraft ? "browse" : target;
     if (editing && unsavedChanges) {
-      pendingExit = target;
+      pendingExit = actualTarget;
       render();
       return;
     }
-    finishExit(target);
+    finishExit(actualTarget);
   }
 
   function finishExit(target: "browse" | "view" | null) {
@@ -338,6 +355,7 @@ export function createPlanPanel(
       currentPlanId = null;
       currentPlanName = "";
       loadedWaypoints = [];
+      isDraft = false;
     }
     render();
   }

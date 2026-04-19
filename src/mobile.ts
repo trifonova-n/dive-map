@@ -181,12 +181,6 @@ export function initMobile(): void {
     app.setRotateAnimationMode(false);
   });
 
-  // "Start AR mode here" / "Move here" popup buttons (replacing inline onclick)
-  document.getElementById("start-ar-here-btn")
-    ?.addEventListener("click", startARModeHere);
-  document.getElementById("move-here-btn")
-    ?.addEventListener("click", moveHere);
-
   // --- GUI patches ---
 
   const origPopupHide = Q3D.gui.popup.hide;
@@ -246,27 +240,6 @@ export function startARMode(position?: THREE.Vector3): void {
       alert(error);
     });
 
-  document.querySelectorAll(".action-move").forEach(function (elm) {
-    elm.classList.toggle("hidden");
-  });
-  document.querySelector(".action-zoom")?.classList.add("hidden");
-  document.querySelector(".action-orbit")?.classList.add("hidden");
-}
-
-function startARModeHere(): void {
-  const app = Q3D.application;
-  const vec3 = new THREE.Vector3();
-  vec3.copy(app.queryTargetPosition);
-  vec3.z += Q3D.Config.AR.DH * app.scene.userData.zScale;
-  startARMode(vec3);
-  (Q3D.E("ar-checkbox") as HTMLInputElement).checked = true;
-}
-
-function moveHere(): void {
-  const app = Q3D.application;
-  app.camera.position.copy(app.queryTargetPosition);
-  app.camera.position.z +=
-    Q3D.Config.AR.DH * app.scene.userData.zScale;
 }
 
 function stopARMode(): void {
@@ -294,11 +267,6 @@ function stopARMode(): void {
   if (Q3D.Config.bgColor !== null)
     app.renderer.setClearColor(Q3D.Config.bgColor || 0, 1);
 
-  document.querySelectorAll(".action-move").forEach(function (elm) {
-    elm.classList.toggle("hidden");
-  });
-  document.querySelector(".action-zoom")?.classList.remove("hidden");
-  document.querySelector(".action-orbit")?.classList.remove("hidden");
 }
 
 // --- Geolocation ---

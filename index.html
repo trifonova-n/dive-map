@@ -85,27 +85,12 @@
   <div id="popupbody">
     <div id="popupcontent"></div>
 
-    <!-- query result -->
+    <!-- query result (coords only; action buttons removed in favor of the plan panel flow) -->
     <div id="queryresult">
       <table id="qr_coords_table">
-        <caption>Clicked coordinates <div id="zoomtopoint" class="action-zoom zoombtn"></div></caption>
+        <caption>Clicked coordinates</caption>
         <tr><td id="qr_coords"></td></tr>
       </table>
-
-      <table id="qr_layername_table">
-        <caption>Layer <div id="zoomtolayer" class="action-zoom zoombtn"></div></caption>
-        <tr><td id="qr_layername"></td></tr>
-      </table>
-
-      <table id="qr_attrs_table">
-        <caption>Attributes</caption>
-      </table>
-
-      <!-- camera actions and measure tool -->
-      <div class="action-btn action-move" id="start-ar-here-btn">Start AR mode here</div>
-      <div class="action-btn action-move hidden" id="move-here-btn">Move here</div>
-      <div id="orbitbtn" class="action-btn action-orbit">Orbit</div>
-      <div id="measurebtn" class="action-btn">Measure distance</div>
     </div>
 
     <!-- page info -->
