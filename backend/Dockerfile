@@ -10,10 +10,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
-
 COPY . .
+RUN pip install --no-cache-dir -e .
 
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 USER app
