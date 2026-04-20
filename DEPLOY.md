@@ -36,7 +36,7 @@ Single-VPS production setup using Docker Compose, Caddy (auto-HTTPS), and a bind
 5. **Upload the scene file** (from your laptop — it's gitignored):
    ```bash
    ssh root@SERVER 'mkdir -p /srv/dive-map/media/index'
-   scp data/index/scene.js root@SERVER:/srv/dive-map/media/index/scene.js
+   scp frontend/data/index/scene.js root@SERVER:/srv/dive-map/media/index/scene.js
    ```
 
 6. **Deploy:**
