@@ -7,6 +7,7 @@ import { WaypointLabelManager } from "./waypoint-labels";
 import { patchMeasureTool, setEditMode } from "./measure-hooks";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys } from "./hotkeys";
+import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
 import { createAuthPanel } from "./ui/auth-panel";
 import { createPlanPanel, type PlanPanelAPI } from "./ui/plan-panel";
 import "./ui/styles.css";
@@ -53,6 +54,8 @@ function bootstrap(): void {
 
   app.init(container);
   initMobile();
+
+  patchLoadJSONObjectForSafari(app);
 
   app.loadSceneFile(
     "./data/index/scene.js",
