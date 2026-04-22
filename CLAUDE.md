@@ -36,7 +36,7 @@ A 3D dive route planner for Point Lobos / Monterey Bay bathymetry built on a Qgi
 | `waypoint-labels.ts` | `WaypointLabelManager` — lat/lon/depth labels, Shift+L toggle |
 | `measure-hooks.ts` | `patchMeasureTool()` — monkey-patches `app.measure` to sync labels |
 | `camera.ts` | `centerCameraOnSceneWhenReady()` — one-shot bounding box camera fit |
-| `hotkeys.ts` | `registerHotkeys()` — Shift+L handler (capture phase) |
+| `hotkeys.ts` | `registerHotkeys()` — Shift+L handler (capture phase); `disableQ3DHotkeys()` removes Q3D's `window` keydown listener |
 | `api-client.ts` | Typed fetch wrapper for backend API; JWT token management in localStorage |
 | `ui/auth-panel.ts` | Login/register/logout panel |
 | `ui/plan-panel.ts` | Dive plan list, create, load, save, clear |
@@ -64,5 +64,5 @@ FastAPI + async SQLAlchemy 2.0 + PostGIS. JWT auth (bcrypt passwords, HS256 toke
 - `frontend/public/vendor/Qgis2threejs.js` and `frontend/data/index/scene.js` are generated artifacts. Fixes belong in `frontend/src/` modules, `frontend/src/styles/custom.css`, or `frontend/index.html`, not in the generated files.
 - `scene.js` expects `app` on the global scope — `frontend/src/main.ts` sets `window.app = Q3D.application` in `bootstrap()`. Do not remove this.
 - AR mode requires HTTPS (or localhost) for camera/orientation APIs.
-- Qgis2threejs binds `W` (wireframe), `L` (labels), `R` (rotate), `I` (info). The waypoint-label toggle uses **Shift+L** to avoid conflicts.
+- Qgis2threejs's built-in hotkeys (`W` wireframe, `L` labels, `R` rotate, `I` info, `Esc`, `Backspace`, `Enter`, `Shift+R`, `Shift+S`) are disabled at startup via `disableQ3DHotkeys()` — the vendor listener had no input-focus guard and fired while typing in form fields. Only the custom **Shift+L** (waypoint labels) and **Esc** (exit plan edit mode) remain, registered in `hotkeys.ts`.
 - Alembic's `env.py` filters tables to only track `users`, `dive_sites`, `dive_plans`, `waypoints` — PostGIS tiger/geocoder tables are excluded.

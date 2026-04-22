@@ -6,7 +6,7 @@ import { SegmentLabelManager, computeSegment } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
 import { patchMeasureTool, setEditMode } from "./measure-hooks";
 import { centerCameraOnSceneWhenReady } from "./camera";
-import { registerHotkeys } from "./hotkeys";
+import { registerHotkeys, disableQ3DHotkeys } from "./hotkeys";
 import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
 import { createAuthPanel } from "./ui/auth-panel";
 import { createPlanPanel, type PlanPanelAPI } from "./ui/plan-panel";
@@ -104,6 +104,7 @@ async function initCustom(): Promise<void> {
   patchMeasureTool(app, waypointMgr, segmentMgr, {
     onWaypointAdded: () => planPanel?.markDirty(),
   });
+  disableQ3DHotkeys(app);
   registerHotkeys(waypointMgr, {
     onEscape: () => planPanel?.handleEscape() ?? false,
   });

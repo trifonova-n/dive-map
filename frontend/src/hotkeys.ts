@@ -6,6 +6,17 @@ export interface HotkeyOptions {
 }
 
 /**
+ * Removes Qgis2threejs's built-in `keydown` handler (W, L, R, I, Esc,
+ * Backspace, Enter, Shift+R, Shift+S). The vendor listener is bound on
+ * `window` with no input-focus guard, so it fires while typing in form
+ * fields. Call this after `app.init()` to disable all of them.
+ */
+export function disableQ3DHotkeys(app: Q3DApplication): void {
+  const handler = app.eventListener?.keydown;
+  if (handler) window.removeEventListener("keydown", handler);
+}
+
+/**
  * Registers keyboard shortcuts.
  * Shift+L toggles waypoint label visibility.
  * Escape (when onEscape returns true) exits plan-panel edit mode.
