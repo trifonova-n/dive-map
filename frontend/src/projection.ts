@@ -74,6 +74,10 @@ export function projectLandmarks(
   getObstacleRects: () => DOMRect[]
 ): void {
   const v = new THREE.Vector3();
+  // Labels declutter at overview zoom: only shown within this camera distance
+  // of each landmark. Scene diagonal is ~1500 m; 800 m shows labels once the
+  // user zooms in past the initial full-scene fit.
+  const LABEL_VISIBLE_MAX_DISTANCE = 800;
 
   function tick() {
     const rect = app.renderer.domElement.getBoundingClientRect();
@@ -81,6 +85,10 @@ export function projectLandmarks(
 
     // Pass 1: position each visible landmark div.
     for (const r of records) {
+      if (cam.position.distanceTo(r.position) > LABEL_VISIBLE_MAX_DISTANCE) {
+        r.div.style.display = "none";
+        continue;
+      }
       v.copy(r.position).project(cam);
       if (v.z >= 1) {
         r.div.style.display = "none";

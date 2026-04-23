@@ -25,8 +25,11 @@ export class LandmarkLabelManager {
     const T = window.THREE as unknown as Record<string, new (...args: unknown[]) => unknown>;
     const Q3DGroupCtor = (window as unknown as { Q3DGroup: new () => THREE.Group }).Q3DGroup;
 
-    // Small enough to not compete with waypoint markers; gold to match the label accent.
-    this.geom = new T.SphereBufferGeometry(0.6, 16, 12);
+    // Gold to match the label accent. Geometry radius is tiny because
+    // `app.queryMarker.onBeforeRender` rescales each frame by distance-to-camera,
+    // giving a constant on-screen size. Waypoint markers use the same hook with
+    // radius 0.004; landmarks are slightly larger so they read as distinct.
+    this.geom = new T.SphereBufferGeometry(0.005, 20, 14);
     this.mtl = new T.MeshBasicMaterial({ color: 0xd4a84b });
 
     this.group = new Q3DGroupCtor();
@@ -40,14 +43,23 @@ export class LandmarkLabelManager {
       { x: lon, y: lat, z: -depthForScene },
       true
     );
+    // Lift sphere above terrain so it isn't buried in the surface mesh.
+    const z = world.z + 3;
 
     const T = window.THREE as unknown as Record<string, new (...args: unknown[]) => unknown>;
     const Vec3 = T.Vector3 as unknown as new (x: number, y: number, z: number) => THREE.Vector3;
     const mesh = new T.Mesh(
       this.geom as unknown as object,
       this.mtl as unknown as object
-    ) as unknown as THREE.Object3D;
-    mesh.position.set(world.x, world.y, world.z);
+    ) as unknown as THREE.Object3D & {
+      onBeforeRender: unknown;
+    };
+    mesh.position.set(world.x, world.y, z);
+    // Reuse the Q3D per-frame scale hook so the sphere stays a constant size on
+    // screen (same behavior as waypoint markers).
+    mesh.onBeforeRender = (this.app.queryMarker as unknown as {
+      onBeforeRender: unknown;
+    }).onBeforeRender;
     (this.group as unknown as Adder).add(mesh);
 
     const depthHtml =
@@ -61,7 +73,7 @@ export class LandmarkLabelManager {
     this.records.push({
       div,
       marker: mesh,
-      position: new Vec3(world.x, world.y, world.z),
+      position: new Vec3(world.x, world.y, z),
     });
   }
 

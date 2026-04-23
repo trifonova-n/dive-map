@@ -12,6 +12,7 @@ declare global {
       copy(v: Vector3): this;
       set(x: number, y: number, z: number): this;
       project(camera: Camera): this;
+      distanceTo(v: Vector3): number;
     }
 
     class Box3 {
