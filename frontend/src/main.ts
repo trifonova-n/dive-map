@@ -101,7 +101,7 @@ async function initCustom(): Promise<void> {
   // once it's created below.
   let planPanel: PlanPanelAPI | null = null;
 
-  patchMeasureTool(app, waypointMgr, segmentMgr, {
+  patchMeasureTool(app, waypointMgr, segmentMgr, config, {
     onWaypointAdded: () => planPanel?.markDirty(),
   });
   disableQ3DHotkeys(app);

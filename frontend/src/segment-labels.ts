@@ -46,17 +46,8 @@ export class SegmentLabelManager {
     );
 
     const text = `${distFt.toFixed(1)} ft<br>${heading.toFixed(1)}\u00B0M`;
-    const div = makeDivLabel(text, "center");
+    const div = makeDivLabel(text, "segment", "center");
     this.labels.push({ div, position: mid });
-
-    // Brighten the existing Qgis2threejs measure line segments
-    const brightness = parseInt(this.config.lineBrightness, 16);
-    app.scene.traverse((obj: THREE.Object3D) => {
-      if (obj.isLine && obj.parent?.name === "measure line") {
-        obj.material.color.setHex(brightness);
-        obj.material.needsUpdate = true;
-      }
-    });
   }
 
   removeLast(): void {

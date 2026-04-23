@@ -16,9 +16,9 @@ export class WaypointLabelManager {
   constructor(private config: SiteConfig) {
     try {
       const v = localStorage.getItem(LS_KEY);
-      this.visible = v === null ? true : v === "1";
+      this.visible = v === null ? false : v === "1";
     } catch {
-      this.visible = true;
+      this.visible = false;
     }
   }
 
@@ -55,7 +55,7 @@ export class WaypointLabelManager {
     const depthFt = Math.abs(mapPt.z * this.config.metersToFeet);
     const html = `${lat.toFixed(4)}, ${lon.toFixed(4)}<br>${depthFt.toFixed(1)} ft`;
 
-    const div = makeDivLabel(html, "right");
+    const div = makeDivLabel(html, "waypoint", "right");
     div.style.transform = "none";
     div.style.transformOrigin = "top right";
 

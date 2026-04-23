@@ -1,3 +1,4 @@
+import type { SiteConfig } from "./config";
 import type { SegmentLabelManager } from "./segment-labels";
 import type { WaypointLabelManager } from "./waypoint-labels";
 
@@ -16,6 +17,7 @@ export function patchMeasureTool(
   app: Q3DApplication,
   waypointMgr: WaypointLabelManager,
   segmentMgr: SegmentLabelManager,
+  config: SiteConfig,
   opts: MeasureHookOptions = {}
 ): void {
   const measure = app.measure;
@@ -24,7 +26,7 @@ export function patchMeasureTool(
   const origClear = measure.clear.bind(measure) as () => unknown;
   const origShowResult = measure.showResult.bind(measure) as () => void;
 
-  initMeasureTool(app);
+  initMeasureTool(app, config);
 
   measure.addPoint = function (pt: THREE.Vector3) {
     const out = origAdd(pt);
@@ -73,7 +75,7 @@ export function patchMeasureTool(
  * without the spurious addPoint(queryTargetPosition) it tacks on the end.
  * Safe to call before any user interaction.
  */
-function initMeasureTool(app: Q3DApplication): void {
+function initMeasureTool(app: Q3DApplication, config: SiteConfig): void {
   const measure = app.measure as unknown as {
     isActive: boolean;
     geom?: unknown;
@@ -103,10 +105,10 @@ function initMeasureTool(app: Q3DApplication): void {
     transparent: cfg.marker.opacity < 1,
   });
   measure.lineMtl = new T.LineBasicMaterial({
-    color: 0xffff00,
+    color: parseInt(config.lineBrightness, 16),
     linewidth: 3,
     transparent: true,
-    opacity: 0.9,
+    opacity: 1.0,
   });
 
   const markerGroup = new Q3DGroupCtor();
