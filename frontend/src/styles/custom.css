@@ -27,6 +27,29 @@
   padding: 4px 8px;
 }
 
+.label-segment .seg-dist {
+  display: block;
+  color: #f4f4f5;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.label-segment .seg-hdg {
+  display: block;
+  color: #f0abfc;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.label-segment .seg-arrow {
+  display: inline-block;
+  width: 10px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 4px;
+  transform-origin: center;
+}
+
 .label-waypoint {
   border-left-color: #22d3ee;
   font-size: 11px;

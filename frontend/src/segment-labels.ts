@@ -2,20 +2,42 @@ import type { SiteConfig } from "./config";
 import { makeDivLabel } from "./labels";
 import type { LabelRecord } from "./projection";
 
-/** Pure computation: distance in feet and magnetic heading between two 3D points. */
+/**
+ * Pure computation: distance in feet and bearings between two 3D points.
+ * `trueBearing` is the world-space bearing (matches the on-screen line direction
+ * when north is up); `heading` is the magnetic compass reading for the diver.
+ */
 export function computeSegment(
   a: { x: number; y: number; z: number },
   b: { x: number; y: number; z: number },
   metersToFeet: number,
   magDeclination: number
-): { distFt: number; heading: number } {
+): { distFt: number; heading: number; trueBearing: number } {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const dz = b.z - a.z;
   const distFt = Math.sqrt(dx * dx + dy * dy + dz * dz) * metersToFeet;
-  let heading = (Math.atan2(dx, dy) * 180) / Math.PI;
-  heading = (heading + magDeclination + 360) % 360;
-  return { distFt, heading };
+  const trueBearing = (Math.atan2(dx, dy) * 180) / Math.PI;
+  const heading = (trueBearing + magDeclination + 360) % 360;
+  return { distFt, heading, trueBearing };
+}
+
+/**
+ * Two-line HTML: neutral distance on top, rotated compass needle + heading below.
+ * Needle uses `trueBearing` so it visually aligns with the on-screen line; the
+ * numeric readout uses magnetic `heading` for diver compass use.
+ */
+function buildSegmentHtml(distFt: number, heading: number, trueBearing: number): string {
+  const hdg = heading.toFixed(1);
+  // Elongated kite shape with a notched base — tip unambiguous at any rotation.
+  const needle =
+    `<svg class="seg-arrow" viewBox="-5 -7 10 14" style="transform:rotate(${trueBearing.toFixed(1)}deg)">` +
+    `<polygon points="0,-7 4,6 0,3 -4,6" fill="currentColor"/>` +
+    `</svg>`;
+  return (
+    `<span class="seg-dist">${distFt.toFixed(1)} ft</span>` +
+    `<span class="seg-hdg">${needle}${hdg}°M</span>`
+  );
 }
 
 /**
@@ -35,7 +57,7 @@ export class SegmentLabelManager {
     const a = mg.children[mg.children.length - 2].position;
     const b = mg.children[mg.children.length - 1].position;
 
-    const { distFt, heading } = computeSegment(
+    const { distFt, heading, trueBearing } = computeSegment(
       a, b, this.config.metersToFeet, this.config.magDeclination
     );
 
@@ -45,9 +67,15 @@ export class SegmentLabelManager {
       (a.z + b.z) / 2 + this.config.midLabelLift
     );
 
-    const text = `${distFt.toFixed(1)} ft<br>${heading.toFixed(1)}\u00B0M`;
-    const div = makeDivLabel(text, "segment", "center");
-    this.labels.push({ div, position: mid });
+    const div = makeDivLabel(buildSegmentHtml(distFt, heading, trueBearing), "segment", "center");
+    const arrow = div.querySelector("svg.seg-arrow") as SVGElement | null;
+    this.labels.push({
+      div,
+      position: mid,
+      a: new THREE.Vector3(a.x, a.y, a.z),
+      b: new THREE.Vector3(b.x, b.y, b.z),
+      arrow: arrow ?? undefined,
+    });
   }
 
   removeLast(): void {

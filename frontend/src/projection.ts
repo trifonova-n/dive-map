@@ -6,6 +6,10 @@
 export interface LabelRecord {
   div: HTMLDivElement;
   position: THREE.Vector3;
+  /** Optional segment endpoints: when set, the projector rotates `arrow` to the on-screen A→B angle. */
+  a?: THREE.Vector3;
+  b?: THREE.Vector3;
+  arrow?: SVGElement;
 }
 
 export interface WaypointLabelRecord {
@@ -23,6 +27,8 @@ export function runProjector(
   app: Q3DApplication
 ): void {
   const v = new THREE.Vector3();
+  const va = new THREE.Vector3();
+  const vb = new THREE.Vector3();
 
   function tick() {
     const rect = app.renderer.domElement.getBoundingClientRect();
@@ -34,6 +40,17 @@ export function runProjector(
       lbl.div.style.display = v.z < 1 ? "block" : "none";
       lbl.div.style.left = `${x}px`;
       lbl.div.style.top = `${y}px`;
+
+      if (lbl.arrow && lbl.a && lbl.b) {
+        va.copy(lbl.a).project(cam);
+        vb.copy(lbl.b).project(cam);
+        // Screen-space delta: +x right, +y up (NDC) → flip y for CSS where +y is down.
+        // Rotate so the needle's tip (0,-7 in its viewBox, i.e. "up") points along A→B.
+        const dxs = vb.x - va.x;
+        const dys = -(vb.y - va.y); // NDC → screen y
+        const deg = (Math.atan2(dxs, -dys) * 180) / Math.PI;
+        lbl.arrow.style.transform = `rotate(${deg.toFixed(1)}deg)`;
+      }
     }
     requestAnimationFrame(tick);
   }
