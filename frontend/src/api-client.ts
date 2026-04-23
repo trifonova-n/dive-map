@@ -122,6 +122,24 @@ export async function getSiteConfig(siteId: number): Promise<SiteConfigAPI> {
   return res.json();
 }
 
+// --- Landmarks ---
+
+export interface LandmarkAPI {
+  id: number;
+  site_id: number;
+  user_id: number | null;
+  name: string;
+  latitude: number;
+  longitude: number;
+  depth_m: number | null;
+}
+
+export async function getLandmarks(siteId: number): Promise<LandmarkAPI[]> {
+  const res = await fetch(`${BASE}/sites/${siteId}/landmarks`);
+  if (!res.ok) throw new Error(`Landmarks failed (${res.status})`);
+  return res.json();
+}
+
 // --- Dive plans ---
 
 export interface DivePlanAPI {

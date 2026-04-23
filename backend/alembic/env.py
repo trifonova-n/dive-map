@@ -14,7 +14,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Only track our own tables — ignore PostGIS/tiger internal tables
-OUR_TABLES = {"users", "dive_sites", "dive_plans", "waypoints"}
+OUR_TABLES = {"users", "dive_sites", "dive_plans", "waypoints", "landmarks"}
 
 
 def include_name(name, type_, parent_names):

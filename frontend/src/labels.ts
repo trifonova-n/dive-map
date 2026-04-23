@@ -4,7 +4,7 @@
  */
 export function makeDivLabel(
   text: string,
-  kind: "waypoint" | "segment",
+  kind: "waypoint" | "segment" | "landmark",
   align: "center" | "right" = "center"
 ): HTMLDivElement {
   const div = document.createElement("div");

@@ -87,3 +87,23 @@ class Waypoint(Base):
     )
 
     plan: Mapped["DivePlan"] = relationship(back_populates="waypoints")
+
+
+class Landmark(Base):
+    __tablename__ = "landmarks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("dive_sites.id"), index=True
+    )
+    # NULL = global/curated landmark; non-NULL = user-owned.
+    user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(120))
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    depth_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

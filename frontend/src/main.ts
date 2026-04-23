@@ -1,11 +1,13 @@
 import "./types";
 import { loadConfig } from "./config";
 import { setupMobile, initMobile, startARMode, moveToCurrentLocation } from "./mobile";
-import { runProjector, projectWaypointsAnchored } from "./projection";
+import { runProjector, projectWaypointsAnchored, projectLandmarks } from "./projection";
 import { SegmentLabelManager, computeSegment } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
+import { LandmarkLabelManager } from "./landmark-labels";
 import { patchMeasureTool, setEditMode } from "./measure-hooks";
 import { RouteTubeManager } from "./route-tubes";
+import { getLandmarks } from "./api-client";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys, disableQ3DHotkeys } from "./hotkeys";
 import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
@@ -25,6 +27,28 @@ function waitForQ3D(): Promise<void> {
       } else {
         requestAnimationFrame(poll);
       }
+    })();
+  });
+}
+
+/** Resolves once the scene has at least one visible mesh — implies scene.js
+ *  has finished executing and userData (proj4/origin/baseExtent) is populated,
+ *  so toWorldCoordinates can be called. */
+function waitForSceneReady(app: Q3DApplication): Promise<void> {
+  return new Promise((resolve) => {
+    (function poll() {
+      const scene = app.scene;
+      if (scene) {
+        const box = new THREE.Box3();
+        scene.traverse((obj) => {
+          if (obj.isMesh && obj.visible) box.expandByObject(obj);
+        });
+        if (!box.isEmpty()) {
+          resolve();
+          return;
+        }
+      }
+      requestAnimationFrame(poll);
     })();
   });
 }
@@ -105,6 +129,32 @@ async function initCustom(): Promise<void> {
   );
 
   const tubeMgr = new RouteTubeManager(config, app);
+
+  // Landmarks: fetch + mount after the scene is ready so toWorldCoordinates
+  // has a populated CRS on scene.userData.
+  const landmarkMgr = new LandmarkLabelManager(config, app);
+  projectLandmarks(landmarkMgr.records, app, () => {
+    const out: DOMRect[] = [];
+    if (waypointMgr.isVisible()) {
+      for (const { div } of waypointMgr.labels.values()) {
+        if (div.style.display !== "none") out.push(div.getBoundingClientRect());
+      }
+    }
+    for (const { div } of segmentMgr.labels) {
+      if (div.style.display !== "none") out.push(div.getBoundingClientRect());
+    }
+    return out;
+  });
+  waitForSceneReady(app).then(async () => {
+    try {
+      const rows = await getLandmarks(1);
+      for (const r of rows) {
+        landmarkMgr.add(r.name, r.latitude, r.longitude, r.depth_m);
+      }
+    } catch (e) {
+      console.warn("Landmarks not loaded", e);
+    }
+  });
 
   // Forward-reference so the patch and hotkeys can call into the panel
   // once it's created below.

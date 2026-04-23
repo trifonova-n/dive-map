@@ -18,6 +18,11 @@ export interface WaypointLabelRecord {
   offsetPx: number;
 }
 
+export interface LandmarkProjectorRecord {
+  div: HTMLDivElement;
+  position: THREE.Vector3;
+}
+
 /**
  * Projects an array of labels (used for segment labels) from 3D to 2D
  * each frame, centering each label div at the projected point.
@@ -52,6 +57,62 @@ export function runProjector(
         lbl.arrow.style.transform = `rotate(${deg.toFixed(1)}deg)`;
       }
     }
+    requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+/**
+ * Projects landmark labels from 3D to 2D each frame. Each frame, snapshots
+ * obstacle rects (waypoint + segment labels) via the caller-supplied closure
+ * and hides any landmark whose projected rect intersects an obstacle.
+ * Route labels always win; landmarks are context and yield.
+ */
+export function projectLandmarks(
+  records: LandmarkProjectorRecord[],
+  app: Q3DApplication,
+  getObstacleRects: () => DOMRect[]
+): void {
+  const v = new THREE.Vector3();
+
+  function tick() {
+    const rect = app.renderer.domElement.getBoundingClientRect();
+    const cam = app.camera;
+
+    // Pass 1: position each visible landmark div.
+    for (const r of records) {
+      v.copy(r.position).project(cam);
+      if (v.z >= 1) {
+        r.div.style.display = "none";
+        continue;
+      }
+      const x = (v.x + 1) * 0.5 * rect.width + rect.left;
+      const y = (-v.y + 1) * 0.5 * rect.height + rect.top;
+      r.div.style.left = `${x}px`;
+      r.div.style.top = `${y}px`;
+      r.div.style.display = "block";
+    }
+
+    // Pass 2: now that positions are applied, measure and cull overlaps.
+    const obstacles = getObstacleRects();
+    if (obstacles.length) {
+      for (const r of records) {
+        if (r.div.style.display === "none") continue;
+        const lr = r.div.getBoundingClientRect();
+        for (const o of obstacles) {
+          if (
+            lr.left < o.right &&
+            lr.right > o.left &&
+            lr.top < o.bottom &&
+            lr.bottom > o.top
+          ) {
+            r.div.style.display = "none";
+            break;
+          }
+        }
+      }
+    }
+
     requestAnimationFrame(tick);
   }
   tick();
