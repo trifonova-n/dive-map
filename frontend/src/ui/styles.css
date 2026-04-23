@@ -220,9 +220,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 0;
+  padding: 3px 6px;
+  margin: 0 -6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid transparent;
+  border-radius: 2px;
   font-size: 11px;
+  cursor: pointer;
+}
+
+#divemap-panel .waypoint-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+#divemap-panel .waypoint-row.selected {
+  background: rgba(74, 158, 255, 0.18);
+  border-left-color: #4a9eff;
 }
 
 #divemap-panel .waypoint-row:last-child {

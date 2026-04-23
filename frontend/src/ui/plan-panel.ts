@@ -17,6 +17,7 @@ export interface PlanPanelDeps {
   importWaypoints: (waypoints: WaypointInput[]) => void;
   clearWaypoints: () => void;
   setEditMode: (flag: boolean) => void;
+  highlightWaypoint: (seq: number | null) => void;
   metersToFeet: number;
 }
 
@@ -37,6 +38,7 @@ let isDraft = false;
 let loadedWaypoints: api.WaypointAPI[] = [];
 let pendingExit: "browse" | "view" | null = null;
 let pendingSaveAfterLogin = false;
+let selectedSeq: number | null = null;
 
 export function createPlanPanel(
   container: HTMLElement,
@@ -75,6 +77,7 @@ export function createPlanPanel(
 
   function resetStateForLogout() {
     if (editing) deps.setEditMode(false);
+    clearSelection();
     deps.clearWaypoints();
     currentPlanId = null;
     currentPlanName = "";
@@ -84,6 +87,20 @@ export function createPlanPanel(
     loadedWaypoints = [];
     pendingExit = null;
     pendingSaveAfterLogin = false;
+  }
+
+  function clearSelection() {
+    if (selectedSeq !== null) {
+      selectedSeq = null;
+      deps.highlightWaypoint(null);
+    }
+  }
+
+  function selectRow(seq: number) {
+    const next = selectedSeq === seq ? null : seq;
+    selectedSeq = next;
+    deps.highlightWaypoint(next);
+    render();
   }
 
   async function renderBrowse() {
@@ -132,6 +149,7 @@ export function createPlanPanel(
         const id = Number((item as HTMLElement).dataset.id);
         try {
           const detail = await api.getPlan(id);
+          clearSelection();
           deps.clearWaypoints();
           if (detail.waypoints.length) deps.importWaypoints(detail.waypoints);
           currentPlanId = id;
@@ -149,6 +167,7 @@ export function createPlanPanel(
     el.querySelector("#dm-create-plan")!.addEventListener("click", () => {
       // Create a nameless draft — name and backend persistence are deferred
       // until the user chooses to save.
+      clearSelection();
       deps.clearWaypoints();
       currentPlanId = null;
       currentPlanName = "";
@@ -177,6 +196,7 @@ export function createPlanPanel(
           showError("No waypoints found in CSV.");
           return;
         }
+        clearSelection();
         deps.clearWaypoints();
         deps.importWaypoints(waypoints);
         currentPlanId = null;
@@ -207,6 +227,7 @@ export function createPlanPanel(
       <div class="error" id="dm-plan-error" style="display:none"></div>
     `;
     wireHeader();
+    wireRowSelection();
     el.querySelector("#dm-edit")!.addEventListener("click", () => {
       editing = true;
       deps.setEditMode(true);
@@ -234,6 +255,7 @@ export function createPlanPanel(
       <div class="error" id="dm-plan-error" style="display:none"></div>
     `;
     wireHeader();
+    wireRowSelection();
     el.querySelector("#dm-done")!.addEventListener("click", () =>
       requestExit("view")
     );
@@ -243,6 +265,7 @@ export function createPlanPanel(
         const seq = Number((btn as HTMLElement).dataset.seq);
         const current = deps.exportWaypoints();
         const filtered = current.filter((w) => w.seq !== seq);
+        clearSelection();
         deps.clearWaypoints();
         if (filtered.length) deps.importWaypoints(filtered);
         unsavedChanges = true;
@@ -251,6 +274,16 @@ export function createPlanPanel(
     });
     wireSave();
     wireExportCsv();
+  }
+
+  function wireRowSelection() {
+    el.querySelectorAll(".waypoint-row").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).closest(".wp-row-delete")) return;
+        const seq = Number((row as HTMLElement).dataset.seq);
+        if (Number.isFinite(seq)) selectRow(seq);
+      });
+    });
   }
 
   function renderGuard() {
@@ -271,6 +304,7 @@ export function createPlanPanel(
       render();
     });
     el.querySelector("#dm-guard-discard")!.addEventListener("click", () => {
+      clearSelection();
       deps.clearWaypoints();
       if (loadedWaypoints.length) deps.importWaypoints(loadedWaypoints);
       unsavedChanges = false;
@@ -343,7 +377,7 @@ export function createPlanPanel(
       wps
         .map(
           (w) => `
-            <div class="waypoint-row">
+            <div class="waypoint-row${w.seq === selectedSeq ? " selected" : ""}" data-seq="${w.seq}">
               <span class="wp-seq">${w.seq}</span>
               <span class="wp-coords">${w.latitude.toFixed(4)}, ${w.longitude.toFixed(4)}</span>
               <span class="wp-depth">${(w.depth_m * deps.metersToFeet).toFixed(0)} ft</span>
@@ -446,6 +480,7 @@ export function createPlanPanel(
       editing = false;
     }
     if (target === "browse") {
+      clearSelection();
       deps.clearWaypoints();
       currentPlanId = null;
       currentPlanName = "";

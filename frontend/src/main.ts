@@ -47,6 +47,12 @@ function bootstrap(): void {
   Q3D.Config.northArrow.enabled = true;
   Q3D.Config.northArrow.color = 0xe31a1c;
 
+  // Override the default yellow marker with magenta; selected waypoints use
+  // the original yellow via the highlighter to stand out.
+  (Q3D.Config as unknown as {
+    measure: { marker: { color: number } };
+  }).measure.marker.color = 0xff00ff;
+
   const container = document.getElementById("view")!;
   const app = Q3D.application;
 
@@ -104,6 +110,8 @@ async function initCustom(): Promise<void> {
   // once it's created below.
   let planPanel: PlanPanelAPI | null = null;
 
+  const highlightWaypoint = makeHighlighter(app);
+
   patchMeasureTool(app, waypointMgr, segmentMgr, tubeMgr, config, {
     onWaypointAdded: () => planPanel?.markDirty(),
   });
@@ -146,9 +154,11 @@ async function initCustom(): Promise<void> {
       }
     },
     clearWaypoints: () => {
+      highlightWaypoint(null);
       app.measure.clear();
     },
     setEditMode: (flag) => setEditMode(app, flag),
+    highlightWaypoint,
     metersToFeet: config.metersToFeet,
   });
 
@@ -156,6 +166,54 @@ async function initCustom(): Promise<void> {
     onLogin: () => planPanel?.update(),
     onLogout: () => planPanel?.handleLogout(),
   });
+}
+
+/**
+ * Builds a highlighter that toggles a bright, enlarged appearance on the
+ * measure-tool marker at a given 1-indexed seq. The shared material stays
+ * untouched — the selected marker gets a cloned material so siblings aren't
+ * affected, and the clone is disposed when selection moves on.
+ */
+function makeHighlighter(app: Q3DApplication): (seq: number | null) => void {
+  type Disposable = THREE.Material & { dispose?: () => void };
+  type Cloneable = THREE.Material & {
+    clone: () => THREE.Material & { color: { setHex: (h: number) => void } };
+  };
+  type Scalable = THREE.Object3D & {
+    scale: { set: (x: number, y: number, z: number) => void };
+  };
+  let highlighted: (THREE.Object3D & Scalable) | null = null;
+
+  return (seq: number | null) => {
+    const sharedMtl = (app.measure as unknown as { mtl: THREE.Material }).mtl;
+    if (highlighted) {
+      (highlighted.material as Disposable).dispose?.();
+      highlighted.material = sharedMtl;
+      highlighted.scale.set(1, 1, 1);
+      highlighted = null;
+    }
+    if (seq !== null) {
+      const marker = app.measure.markerGroup?.children?.[seq - 1] as
+        | (THREE.Object3D & Scalable)
+        | undefined;
+      if (marker) {
+        const clone = (marker.material as Cloneable).clone() as THREE.Material & {
+          color: { setHex: (h: number) => void };
+          opacity: number;
+          transparent: boolean;
+          needsUpdate: boolean;
+        };
+        clone.color.setHex(0xffff00);
+        clone.opacity = 1;
+        clone.transparent = false;
+        clone.needsUpdate = true;
+        marker.material = clone;
+        marker.scale.set(2.2, 2.2, 2.2);
+        highlighted = marker;
+      }
+    }
+    app.render();
+  };
 }
 
 bootstrap();
