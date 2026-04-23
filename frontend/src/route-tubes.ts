@@ -18,8 +18,10 @@ export class RouteTubeManager {
   private readonly group: THREE.Group;
   private readonly geom: unknown;
   private readonly mtl: unknown;
+  private readonly app: Q3DApplication;
 
   constructor(private config: SiteConfig, app: Q3DApplication) {
+    this.app = app;
     const T = window.THREE as unknown as Record<string, new (...args: unknown[]) => unknown>;
     const Q3DGroupCtor = (window as unknown as { Q3DGroup: new () => THREE.Group }).Q3DGroup;
 
@@ -64,17 +66,22 @@ export class RouteTubeManager {
 
     this.tubes.push(mesh as unknown as THREE.Object3D);
     (this.group as unknown as Adder).add(mesh as unknown as THREE.Object3D);
+    this.app.render();
   }
 
   removeLast(): void {
     const mesh = this.tubes.pop();
-    if (mesh) (this.group as unknown as Adder).remove(mesh);
+    if (!mesh) return;
+    (this.group as unknown as Adder).remove(mesh);
+    this.app.render();
   }
 
   clear(): void {
+    if (!this.tubes.length) return;
     while (this.tubes.length) {
       const mesh = this.tubes.pop();
       if (mesh) (this.group as unknown as Adder).remove(mesh);
     }
+    this.app.render();
   }
 }
