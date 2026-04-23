@@ -4,6 +4,7 @@ export interface SiteConfig {
   magDeclination: number;
   midLabelLift: number;
   lineBrightness: string;
+  routeTubeRadius: number;
   metersToFeet: number;
   labelOffsetPx: number;
   cameraDistanceFactor: number;
@@ -13,6 +14,7 @@ const DEFAULTS: SiteConfig = {
   magDeclination: -12.0,
   midLabelLift: 5,
   lineBrightness: "0xc026d3",
+  routeTubeRadius: 0.4,
   metersToFeet: 3.28084,
   labelOffsetPx: 6,
   cameraDistanceFactor: 1.5,

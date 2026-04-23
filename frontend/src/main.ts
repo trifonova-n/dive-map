@@ -5,6 +5,7 @@ import { runProjector, projectWaypointsAnchored } from "./projection";
 import { SegmentLabelManager, computeSegment } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
 import { patchMeasureTool, setEditMode } from "./measure-hooks";
+import { RouteTubeManager } from "./route-tubes";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys, disableQ3DHotkeys } from "./hotkeys";
 import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
@@ -97,11 +98,13 @@ async function initCustom(): Promise<void> {
     () => waypointMgr.isVisible()
   );
 
+  const tubeMgr = new RouteTubeManager(config, app);
+
   // Forward-reference so the patch and hotkeys can call into the panel
   // once it's created below.
   let planPanel: PlanPanelAPI | null = null;
 
-  patchMeasureTool(app, waypointMgr, segmentMgr, config, {
+  patchMeasureTool(app, waypointMgr, segmentMgr, tubeMgr, config, {
     onWaypointAdded: () => planPanel?.markDirty(),
   });
   disableQ3DHotkeys(app);

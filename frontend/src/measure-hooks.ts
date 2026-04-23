@@ -1,4 +1,5 @@
 import type { SiteConfig } from "./config";
+import type { RouteTubeManager } from "./route-tubes";
 import type { SegmentLabelManager } from "./segment-labels";
 import type { WaypointLabelManager } from "./waypoint-labels";
 
@@ -17,6 +18,7 @@ export function patchMeasureTool(
   app: Q3DApplication,
   waypointMgr: WaypointLabelManager,
   segmentMgr: SegmentLabelManager,
+  tubeMgr: RouteTubeManager,
   config: SiteConfig,
   opts: MeasureHookOptions = {}
 ): void {
@@ -34,7 +36,10 @@ export function patchMeasureTool(
     const lastMarker = mg?.children?.[mg.children.length - 1];
     if (lastMarker) {
       waypointMgr.add(lastMarker, app);
-      if (mg.children.length >= 2) segmentMgr.addFromLastTwo(app);
+      if (mg.children.length >= 2) {
+        segmentMgr.addFromLastTwo(app);
+        tubeMgr.addFromLastTwo(app);
+      }
     }
     if (editMode) opts.onWaypointAdded?.();
     return out;
@@ -44,6 +49,7 @@ export function patchMeasureTool(
     const out = origRemove();
     waypointMgr.removeLast();
     segmentMgr.removeLast();
+    tubeMgr.removeLast();
     return out;
   };
 
@@ -61,6 +67,7 @@ export function patchMeasureTool(
     scene.add(measure.lineGroup);
     waypointMgr.clear();
     segmentMgr.clear();
+    tubeMgr.clear();
     return out;
   };
 
@@ -118,6 +125,8 @@ function initMeasureTool(app: Q3DApplication, config: SiteConfig): void {
   const lineGroup = new Q3DGroupCtor();
   lineGroup.name = "measure line";
   lineGroup.position.z += 3;
+  // Hidden — RouteTubeManager draws the visible route as cylinders instead.
+  lineGroup.visible = false;
   measure.lineGroup = lineGroup;
 
   const scene = app.scene as unknown as { add: (o: THREE.Object3D) => void };
