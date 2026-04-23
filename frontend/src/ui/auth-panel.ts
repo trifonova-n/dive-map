@@ -42,19 +42,33 @@ export function createAuthPanel(
       const passEl = el.querySelector("#dm-password") as HTMLInputElement;
       const errEl = el.querySelector("#dm-auth-error") as HTMLElement;
 
+      function showError(msg: string) {
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+      }
+
       async function submit(action: "login" | "register") {
         errEl.style.display = "none";
+        const email = emailEl.value.trim();
+        const password = passEl.value;
+        if (!email) {
+          showError("Please enter your email address.");
+          return;
+        }
+        if (!password) {
+          showError("Please enter a password.");
+          return;
+        }
         try {
           if (action === "login") {
-            await api.login(emailEl.value, passEl.value);
+            await api.login(email, password);
           } else {
-            await api.register(emailEl.value, passEl.value);
+            await api.register(email, password);
           }
           render();
           callbacks.onLogin();
         } catch (e) {
-          errEl.textContent = (e as Error).message;
-          errEl.style.display = "block";
+          showError((e as Error).message);
         }
       }
 

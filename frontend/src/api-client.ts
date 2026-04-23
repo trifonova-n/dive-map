@@ -26,18 +26,50 @@ export function isLoggedIn(): boolean {
 
 // --- Auth ---
 
+async function extractError(res: Response, fallback: string): Promise<string> {
+  let body: any = null;
+  try {
+    body = await res.json();
+  } catch {
+    return fallback;
+  }
+  const detail = body?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    const loc = Array.isArray(first?.loc) ? first.loc : [];
+    const field = loc[loc.length - 1];
+    const msg = typeof first?.msg === "string" ? first.msg : "is invalid";
+    if (field === "email") return "Please enter a valid email address.";
+    if (field === "password") return `Password ${msg}.`;
+    return field ? `${field}: ${msg}` : msg;
+  }
+  return fallback;
+}
+
 export async function register(
   email: string,
   password: string
 ): Promise<string> {
-  const res = await fetch(`${AUTH}/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${AUTH}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Register failed (${res.status})`);
+    if (res.status === 409) {
+      throw new Error(
+        "An account with this email already exists. Try logging in instead."
+      );
+    }
+    throw new Error(
+      await extractError(res, `Registration failed (${res.status}).`)
+    );
   }
   const data = await res.json();
   setToken(data.access_token);
@@ -48,14 +80,21 @@ export async function login(
   email: string,
   password: string
 ): Promise<string> {
-  const res = await fetch(`${AUTH}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${AUTH}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Login failed (${res.status})`);
+    if (res.status === 401) {
+      throw new Error("Incorrect email or password.");
+    }
+    throw new Error(await extractError(res, `Login failed (${res.status}).`));
   }
   const data = await res.json();
   setToken(data.access_token);
