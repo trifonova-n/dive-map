@@ -43,8 +43,10 @@ export class LandmarkLabelManager {
       { x: lon, y: lat, z: -depthForScene },
       true
     );
-    // Lift sphere above terrain so it isn't buried in the surface mesh.
-    const z = world.z + 3;
+    // Surface features (no depth) sit at z=0 where the terrain mesh can bury
+    // them; a small lift prevents that. Underwater features are placed at
+    // their true depth with no adjustment.
+    const z = depth_m == null ? world.z + 3 : world.z;
 
     const T = window.THREE as unknown as Record<string, new (...args: unknown[]) => unknown>;
     const Vec3 = T.Vector3 as unknown as new (x: number, y: number, z: number) => THREE.Vector3;
