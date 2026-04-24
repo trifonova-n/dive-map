@@ -9,5 +9,7 @@ class LandmarkResponse(BaseModel):
     latitude: float
     longitude: float
     depth_m: float | None
+    description: str | None
+    image_url: str | None
 
     model_config = {"from_attributes": True}
