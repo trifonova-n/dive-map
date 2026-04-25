@@ -132,12 +132,71 @@ export interface LandmarkAPI {
   latitude: number;
   longitude: number;
   depth_m: number | null;
+  description: string | null;
+  image_url: string | null;
+}
+
+export interface LandmarkCreateBody {
+  name: string;
+  latitude: number;
+  longitude: number;
+  depth_m: number | null;
+  description?: string | null;
+  image_url?: string | null;
+}
+
+export interface LandmarkUpdateBody {
+  name?: string;
+  description?: string | null;
+  image_url?: string | null;
 }
 
 export async function getLandmarks(siteId: number): Promise<LandmarkAPI[]> {
-  const res = await fetch(`${BASE}/sites/${siteId}/landmarks`);
+  const res = await fetch(`${BASE}/sites/${siteId}/landmarks`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Landmarks failed (${res.status})`);
   return res.json();
+}
+
+export async function createLandmark(
+  siteId: number,
+  body: LandmarkCreateBody
+): Promise<LandmarkAPI> {
+  const res = await fetch(`${BASE}/sites/${siteId}/landmarks`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(await extractError(res, `Create landmark failed (${res.status}).`));
+  }
+  return res.json();
+}
+
+export async function updateLandmark(
+  landmarkId: number,
+  body: LandmarkUpdateBody
+): Promise<LandmarkAPI> {
+  const res = await fetch(`${BASE}/landmarks/${landmarkId}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(await extractError(res, `Update landmark failed (${res.status}).`));
+  }
+  return res.json();
+}
+
+export async function deleteLandmark(landmarkId: number): Promise<void> {
+  const res = await fetch(`${BASE}/landmarks/${landmarkId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(await extractError(res, `Delete landmark failed (${res.status}).`));
+  }
 }
 
 // --- Dive plans ---

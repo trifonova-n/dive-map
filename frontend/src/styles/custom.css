@@ -73,6 +73,15 @@
   font-size: 10px;
 }
 
+.label-landmark.label-landmark--owned {
+  border-left-color: #4bc4d4;
+  color: #d4f4f9;
+}
+
+.label-landmark.label-landmark--owned .lm-depth {
+  color: #4bc4d4;
+}
+
 /* Make sure labels float above the WebGL canvas */
 canvas, #container, .viewer {
   z-index: 0 !important;

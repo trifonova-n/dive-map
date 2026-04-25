@@ -5,14 +5,16 @@ import { runProjector, projectWaypointsAnchored, projectLandmarks } from "./proj
 import { SegmentLabelManager, computeSegment } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
 import { LandmarkLabelManager } from "./landmark-labels";
-import { patchMeasureTool, setEditMode } from "./measure-hooks";
+import { patchMeasureTool, setEditMode, setMeasureMode } from "./measure-hooks";
 import { RouteTubeManager } from "./route-tubes";
-import { getLandmarks } from "./api-client";
+import { getLandmarks, type LandmarkAPI } from "./api-client";
+import { toLonLatXY } from "./crs";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys, disableQ3DHotkeys } from "./hotkeys";
 import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
 import { createAuthPanel } from "./ui/auth-panel";
 import { createPlanPanel, type PlanPanelAPI } from "./ui/plan-panel";
+import { createLandmarkPanel, type LandmarkPanelAPI } from "./ui/landmark-panel";
 import "./ui/styles.css";
 
 /** Polls until Q3D.application.scene and .renderer are ready. */
@@ -148,26 +150,28 @@ async function initCustom(): Promise<void> {
   waitForSceneReady(app).then(async () => {
     try {
       const rows = await getLandmarks(1);
-      for (const r of rows) {
-        landmarkMgr.add(r.name, r.latitude, r.longitude, r.depth_m);
-      }
+      for (const r of rows) landmarkMgr.add(r);
     } catch (e) {
       console.warn("Landmarks not loaded", e);
     }
   });
 
-  // Forward-reference so the patch and hotkeys can call into the panel
-  // once it's created below.
+  // Forward-references so the patch and hotkeys can call into panels
+  // once they're created below.
   let planPanel: PlanPanelAPI | null = null;
+  let landmarkPanel: LandmarkPanelAPI | null = null;
 
   const highlightWaypoint = makeHighlighter(app);
 
   patchMeasureTool(app, waypointMgr, segmentMgr, tubeMgr, config, {
     onWaypointAdded: () => planPanel?.markDirty(),
+    onLandmarkPointPicked: (pt) => landmarkPanel?.handlePlacementPick(pt),
   });
   disableQ3DHotkeys(app);
   registerHotkeys(waypointMgr, {
-    onEscape: () => planPanel?.handleEscape() ?? false,
+    onEscape: () =>
+      (planPanel?.handleEscape() ?? false) ||
+      (landmarkPanel?.handleEscape() ?? false),
   });
   centerCameraOnSceneWhenReady(app, config);
 
@@ -212,9 +216,44 @@ async function initCustom(): Promise<void> {
     metersToFeet: config.metersToFeet,
   });
 
+  landmarkPanel = createLandmarkPanel(panelContainer, {
+    siteId: 1,
+    metersToFeet: config.metersToFeet,
+    setPlacementActive: (flag) => {
+      if (flag) {
+        // Entering landmark placement cancels plan-edit so only one consumer
+        // owns the click stream.
+        planPanel?.handleEscape();
+      }
+      setMeasureMode(app, flag ? "landmark" : "off");
+    },
+    worldToLatLonDepth: (pt) => {
+      const mapPt = app.scene.toMapCoordinates
+        ? app.scene.toMapCoordinates(pt as THREE.Vector3)
+        : (pt as unknown as { x: number; y: number; z: number });
+      const { lon, lat } = toLonLatXY(mapPt.x, mapPt.y, app.scene.userData);
+      const depth_m = mapPt.z < 0 ? Math.abs(mapPt.z) : null;
+      return { latitude: lat, longitude: lon, depth_m };
+    },
+    onLandmarkCreated: (l) => landmarkMgr.add(l),
+    onLandmarkUpdated: (l) => landmarkMgr.update(l),
+    onLandmarkRemoved: (id) => landmarkMgr.remove(id),
+    resetScene: (rows: LandmarkAPI[]) => {
+      landmarkMgr.clear();
+      for (const r of rows) landmarkMgr.add(r);
+    },
+  });
+  landmarkMgr.setOnSelect((id) => landmarkPanel?.selectLandmark(id));
+
   createAuthPanel(panelContainer, {
-    onLogin: () => planPanel?.update(),
-    onLogout: () => planPanel?.handleLogout(),
+    onLogin: () => {
+      planPanel?.update();
+      landmarkPanel?.handleLogin();
+    },
+    onLogout: () => {
+      planPanel?.handleLogout();
+      landmarkPanel?.handleLogout();
+    },
   });
 }
 

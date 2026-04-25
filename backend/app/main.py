@@ -18,6 +18,7 @@ app.include_router(site_config.router)
 app.include_router(dive_plans.router)
 app.include_router(waypoints.router)
 app.include_router(landmarks.router)
+app.include_router(landmarks.flat_router)
 
 
 @app.get("/health")

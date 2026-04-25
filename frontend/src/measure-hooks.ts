@@ -3,16 +3,20 @@ import type { RouteTubeManager } from "./route-tubes";
 import type { SegmentLabelManager } from "./segment-labels";
 import type { WaypointLabelManager } from "./waypoint-labels";
 
-let editMode = false;
+export type MeasureMode = "off" | "plan" | "landmark";
+
+let mode: MeasureMode = "off";
 
 export interface MeasureHookOptions {
   onWaypointAdded?: () => void;
+  onLandmarkPointPicked?: (pt: THREE.Vector3) => void;
 }
 
 /**
  * Monkey-patches app.measure.addPoint / removeLastPoint / clear / showResult
  * to keep waypoint and segment labels in sync, suppress the measure-result
- * popup during edit mode, and notify the plan panel on user-driven adds.
+ * popup during edit mode, and dispatch clicks to either the plan panel (in
+ * plan mode) or a one-shot landmark picker (in landmark mode).
  */
 export function patchMeasureTool(
   app: Q3DApplication,
@@ -31,6 +35,15 @@ export function patchMeasureTool(
   initMeasureTool(app, config);
 
   measure.addPoint = function (pt: THREE.Vector3) {
+    if (mode === "landmark") {
+      // One-shot pick: forward the world coord to the landmark panel, then
+      // exit the mode. Do NOT let Q3D accumulate a marker/line/waypoint.
+      mode = "off";
+      measure.isActive = false;
+      opts.onLandmarkPointPicked?.(pt);
+      return undefined;
+    }
+
     const out = origAdd(pt);
     const mg = measure.markerGroup;
     const lastMarker = mg?.children?.[mg.children.length - 1];
@@ -41,7 +54,7 @@ export function patchMeasureTool(
         tubeMgr.addFromLastTwo(app);
       }
     }
-    if (editMode) opts.onWaypointAdded?.();
+    if (mode === "plan") opts.onWaypointAdded?.();
     return out;
   };
 
@@ -72,7 +85,7 @@ export function patchMeasureTool(
   };
 
   measure.showResult = function () {
-    if (editMode) return;
+    if (mode !== "off") return;
     origShowResult();
   };
 }
@@ -135,10 +148,21 @@ function initMeasureTool(app: Q3DApplication, config: SiteConfig): void {
 }
 
 /**
- * Toggles edit mode: when true, map clicks add waypoints (via measure.isActive),
- * the measure-result popup is suppressed, and user-driven addPoint calls fire onWaypointAdded.
+ * Switch the measure tool between exclusive modes. Entering one mode always
+ * cancels the other — only one consumer owns the click stream at a time.
+ */
+export function setMeasureMode(app: Q3DApplication, next: MeasureMode): void {
+  mode = next;
+  app.measure.isActive = next !== "off";
+}
+
+/**
+ * Back-compat shim for plan-panel, which still toggles a boolean edit flag.
  */
 export function setEditMode(app: Q3DApplication, flag: boolean): void {
-  editMode = flag;
-  app.measure.isActive = flag;
+  setMeasureMode(app, flag ? "plan" : "off");
+}
+
+export function getMeasureMode(): MeasureMode {
+  return mode;
 }
