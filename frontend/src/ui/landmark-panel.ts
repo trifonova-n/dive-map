@@ -159,6 +159,7 @@ export function createLandmarkPanel(
       <label class="landmark-form-label">Image URL
         <input type="text" id="dm-landmark-image" maxlength="500" placeholder="Optional" />
       </label>
+      <div class="landmark-image-slot"></div>
       <div class="error" id="dm-landmark-error" style="display:${formError ? "block" : "none"}">${
         formError ? escapeHtml(formError) : ""
       }</div>
@@ -168,6 +169,10 @@ export function createLandmarkPanel(
       </div>
     `;
     (el.querySelector("#dm-landmark-name") as HTMLInputElement).focus();
+    wireImagePreview(
+      el.querySelector("#dm-landmark-image") as HTMLInputElement,
+      el.querySelector(".landmark-image-slot") as HTMLElement
+    );
     el.querySelector("#dm-landmark-save")!.addEventListener("click", async () => {
       await submitCreateForm();
     });
@@ -192,11 +197,7 @@ export function createLandmarkPanel(
       l.depth_m != null
         ? `depth: ${(Math.abs(l.depth_m) * deps.metersToFeet).toFixed(0)} ft`
         : "surface";
-    const imageHtml = l.image_url
-      ? `<img class="landmark-image-preview" src="${escapeAttr(
-          l.image_url
-        )}" alt="" onerror="this.style.display='none'" />`
-      : "";
+    const imageSlot = l.image_url ? `<div class="landmark-image-slot"></div>` : "";
     const descHtml = l.description
       ? `<div class="landmark-description"></div>`
       : "";
@@ -205,7 +206,7 @@ export function createLandmarkPanel(
         <button class="plan-back" id="dm-landmark-back" aria-label="Back">←</button>
         <span class="plan-title">${escapeHtml(l.name)}</span>
       </div>
-      ${imageHtml}
+      ${imageSlot}
       ${descHtml}
       <div class="landmark-coords-line">
         ${l.latitude.toFixed(5)}, ${l.longitude.toFixed(5)} · ${depthLine}
@@ -223,6 +224,20 @@ export function createLandmarkPanel(
     // Description is user-supplied text — render via textContent so HTML is inert.
     const descEl = el.querySelector(".landmark-description") as HTMLDivElement | null;
     if (descEl && l.description) descEl.textContent = l.description;
+    // Image: build via DOM API so the URL is treated as a literal src value
+    // (no HTML-attribute escaping pitfalls) and we can hide cleanly on error.
+    if (l.image_url) {
+      const slot = el.querySelector(".landmark-image-slot") as HTMLElement | null;
+      if (slot) {
+        const img = document.createElement("img");
+        img.className = "landmark-image-preview";
+        img.alt = "";
+        img.loading = "lazy";
+        img.addEventListener("error", () => slot.remove());
+        img.src = l.image_url;
+        slot.appendChild(img);
+      }
+    }
 
     el.querySelector("#dm-landmark-back")!.addEventListener("click", () => {
       selectedId = null;
@@ -269,6 +284,7 @@ export function createLandmarkPanel(
       <label class="landmark-form-label">Image URL
         <input type="text" id="dm-landmark-image" maxlength="500" />
       </label>
+      <div class="landmark-image-slot"></div>
       <div class="error" id="dm-landmark-error" style="display:${formError ? "block" : "none"}">${
         formError ? escapeHtml(formError) : ""
       }</div>
@@ -280,8 +296,10 @@ export function createLandmarkPanel(
     (el.querySelector("#dm-landmark-name") as HTMLInputElement).value = l.name;
     (el.querySelector("#dm-landmark-desc") as HTMLTextAreaElement).value =
       l.description ?? "";
-    (el.querySelector("#dm-landmark-image") as HTMLInputElement).value =
-      l.image_url ?? "";
+    const imageInput = el.querySelector("#dm-landmark-image") as HTMLInputElement;
+    imageInput.value = l.image_url ?? "";
+    const previewSlot = el.querySelector(".landmark-image-slot") as HTMLElement;
+    wireImagePreview(imageInput, previewSlot);
 
     el.querySelector("#dm-landmark-back")!.addEventListener("click", () => {
       formError = null;
@@ -475,6 +493,28 @@ function escapeHtml(s: string): string {
   return div.innerHTML;
 }
 
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+/**
+ * Live preview for an image-URL input: renders the URL into `slot` as an
+ * `<img>`, hides the slot when blank or when loading fails. Debounced to
+ * avoid hammering the network as the user types.
+ */
+function wireImagePreview(input: HTMLInputElement, slot: HTMLElement): void {
+  let debounce: number | undefined;
+  function refresh() {
+    const url = input.value.trim();
+    slot.innerHTML = "";
+    if (!url) return;
+    const img = document.createElement("img");
+    img.className = "landmark-image-preview";
+    img.alt = "";
+    img.loading = "lazy";
+    img.addEventListener("error", () => (slot.innerHTML = ""));
+    img.src = url;
+    slot.appendChild(img);
+  }
+  input.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = window.setTimeout(refresh, 400);
+  });
+  refresh();
 }
