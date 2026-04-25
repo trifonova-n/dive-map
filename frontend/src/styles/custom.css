@@ -74,12 +74,11 @@
 }
 
 .label-landmark.label-landmark--owned {
-  border-left-color: #4bc4d4;
-  color: #d4f4f9;
+  border-left-color: #f0d878;
 }
 
 .label-landmark.label-landmark--owned .lm-depth {
-  color: #4bc4d4;
+  color: #f0d878;
 }
 
 /* Make sure labels float above the WebGL canvas */

@@ -38,9 +38,10 @@ export class LandmarkLabelManager {
     // Geometry radius is tiny because `app.queryMarker.onBeforeRender` rescales
     // each frame by distance-to-camera, giving a constant on-screen size.
     this.geom = new T.SphereBufferGeometry(0.005, 20, 14);
-    // Gold for curated, teal for user-owned — matches label accent.
+    // Same gold family for both; user-owned is a touch lighter/brighter so
+    // it reads as "yours" without breaking the palette.
     this.mtlCurated = new T.MeshBasicMaterial({ color: 0xd4a84b });
-    this.mtlOwned = new T.MeshBasicMaterial({ color: 0x4bc4d4 });
+    this.mtlOwned = new T.MeshBasicMaterial({ color: 0xf0d878 });
 
     this.group = new Q3DGroupCtor();
     this.group.name = "landmarks";
