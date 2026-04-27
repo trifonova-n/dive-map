@@ -8,9 +8,10 @@ from tests.conftest import TestSession
 async def _seed_site():
     async with TestSession() as session:
         await session.execute(text("""
-            INSERT INTO dive_sites (id, name, latitude, longitude, mag_declination, crs_proj4, z_scale)
+            INSERT INTO dive_sites (id, name, latitude, longitude, mag_declination, crs_proj4, z_scale, scene_path)
             VALUES (1, 'Point Lobos', 36.55, -121.94, -12.0,
-                    '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 2.0)
+                    '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 2.0,
+                    '/data/sites/point-lobos/scene.js')
         """))
         await session.commit()
 

@@ -145,15 +145,24 @@ export async function fetchMe(): Promise<UserAPI | null> {
 export interface SiteConfigAPI {
   id: number;
   name: string;
+  latitude: number;
+  longitude: number;
   mag_declination: number;
   crs_proj4: string;
   z_scale: number;
   base_extent: Record<string, number> | null;
+  scene_path: string;
 }
 
 export async function getSiteConfig(siteId: number): Promise<SiteConfigAPI> {
   const res = await fetch(`${BASE}/sites/${siteId}/config`);
   if (!res.ok) throw new Error(`Site config failed (${res.status})`);
+  return res.json();
+}
+
+export async function listSites(): Promise<SiteConfigAPI[]> {
+  const res = await fetch(`${BASE}/sites/`);
+  if (!res.ok) throw new Error(`List sites failed (${res.status})`);
   return res.json();
 }
 
@@ -278,8 +287,10 @@ export interface DivePlanDetailAPI extends DivePlanAPI {
   waypoints: WaypointAPI[];
 }
 
-export async function listPlans(): Promise<DivePlanAPI[]> {
-  const res = await fetch(`${BASE}/plans/`, { headers: authHeaders() });
+export async function listPlans(siteId?: number): Promise<DivePlanAPI[]> {
+  const url =
+    siteId !== undefined ? `${BASE}/plans/?site_id=${siteId}` : `${BASE}/plans/`;
+  const res = await fetch(url, { headers: authHeaders() });
   if (!res.ok) throw new Error(`List plans failed (${res.status})`);
   return res.json();
 }

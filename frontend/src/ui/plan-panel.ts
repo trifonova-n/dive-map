@@ -7,6 +7,7 @@ export interface WaypointInput {
 }
 
 export interface PlanPanelDeps {
+  siteId: number;
   exportWaypoints: () => Array<{
     seq: number;
     latitude: number;
@@ -108,7 +109,7 @@ export function createPlanPanel(
     let plans: api.DivePlanAPI[] = [];
     if (loggedIn) {
       try {
-        plans = await api.listPlans();
+        plans = await api.listPlans(deps.siteId);
       } catch {
         // Backend may be down
       }
@@ -448,7 +449,7 @@ export function createPlanPanel(
         throw new Error("Name your plan before saving.");
       }
       currentPlanName = name;
-      const plan = await api.createPlan(1, name); // site_id=1 (Point Lobos)
+      const plan = await api.createPlan(deps.siteId, name);
       currentPlanId = plan.id;
       isDraft = false;
     }

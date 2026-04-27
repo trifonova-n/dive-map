@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,12 +13,15 @@ router = APIRouter(prefix="/api/plans", tags=["plans"])
 
 @router.get("/", response_model=list[DivePlanResponse])
 async def list_plans(
+    site_id: int | None = Query(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(DivePlan).where(DivePlan.user_id == user.id).order_by(DivePlan.updated_at.desc())
-    )
+    stmt = select(DivePlan).where(DivePlan.user_id == user.id)
+    if site_id is not None:
+        stmt = stmt.where(DivePlan.site_id == site_id)
+    stmt = stmt.order_by(DivePlan.updated_at.desc())
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 

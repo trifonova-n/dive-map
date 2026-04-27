@@ -1,8 +1,22 @@
 import * as api from "../api-client";
 
 export interface AuthPanelCallbacks {
+  siteName: string;
   onLogin: () => void;
   onLogout: () => void;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case "&": return "&amp;";
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case '"': return "&quot;";
+      case "'": return "&#39;";
+      default: return c;
+    }
+  });
 }
 
 export function createAuthPanel(
@@ -13,9 +27,17 @@ export function createAuthPanel(
   el.className = "panel-box";
   container.appendChild(el);
 
+  const siteHeader = `
+    <div class="site-name-line">
+      ${escapeHtml(callbacks.siteName)}
+      <a class="switch-site-link" href="./">Switch site</a>
+    </div>
+  `;
+
   function render() {
     if (api.isLoggedIn()) {
       el.innerHTML = `
+        ${siteHeader}
         <div class="user-bar">
           <span>Logged in</span>
           <button class="secondary" id="dm-logout">Log out</button>
@@ -28,6 +50,7 @@ export function createAuthPanel(
       });
     } else {
       el.innerHTML = `
+        ${siteHeader}
         <h3>Log in / Register</h3>
         <div class="error" id="dm-auth-error" style="display:none"></div>
         <input type="email" id="dm-email" placeholder="Email" />

@@ -12,8 +12,8 @@ backend/app/__pycache__/
 *.pyc
 *.egg-info/
 
-# Large generated scene data (regenerate from QGIS)
-frontend/data/index/scene.js
+# Large generated scene data (regenerate from QGIS); one subdir per dive site
+frontend/data/
 
 # Local user-image uploads (dev only; prod uses a host bind mount)
 backend/uploads/

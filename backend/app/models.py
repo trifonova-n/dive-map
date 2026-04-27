@@ -41,6 +41,7 @@ class DiveSite(Base):
     )
     z_scale: Mapped[float] = mapped_column(Float, default=2.0)
     base_extent: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    scene_path: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

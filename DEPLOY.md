@@ -33,10 +33,11 @@ Single-VPS production setup using Docker Compose, Caddy (auto-HTTPS), and a bind
    nano .env   # paste DOMAIN, POSTGRES_PASSWORD, JWT_SECRET
    ```
 
-5. **Upload the scene file** (from your laptop — it's gitignored):
+5. **Upload the scene file** (from your laptop — it's gitignored). Each dive site lives under its own slug directory; the seeded Point Lobos site expects `point-lobos`:
    ```bash
-   ssh root@SERVER 'mkdir -p /srv/dive-map/media/index'
-   scp frontend/data/index/scene.js root@SERVER:/srv/dive-map/media/index/scene.js
+   ssh root@SERVER 'mkdir -p /srv/dive-map/media/sites/point-lobos'
+   scp frontend/data/sites/point-lobos/scene.js \
+     root@SERVER:/srv/dive-map/media/sites/point-lobos/scene.js
    ```
 
 6. **Create the uploads directory** (writable by the backend container's UID 1000):
@@ -65,16 +66,27 @@ cd /srv/dive-map
 
 The script: `git pull`, rebuilds images, restarts containers in dependency order, prunes old images. Migrations run automatically on backend startup.
 
-## Adding new maps / media
+## Adding new dive sites
 
-The Caddy container mounts `/srv/dive-map/media` read-only at `/srv/media` and serves it at `/data/*`. To add a file:
+The Caddy container mounts `/srv/dive-map/media` read-only at `/srv/media` and serves it at `/data/*`. To add a new site:
 
-```bash
-scp newmap.js root@SERVER:/srv/dive-map/media/sites/newsite.js
-# now reachable at https://$DOMAIN/data/sites/newsite.js
-```
+1. Upload its scene file under a slug subdirectory:
+   ```bash
+   ssh root@SERVER 'mkdir -p /srv/dive-map/media/sites/<slug>'
+   scp scene.js root@SERVER:/srv/dive-map/media/sites/<slug>/scene.js
+   # now reachable at https://$DOMAIN/data/sites/<slug>/scene.js
+   ```
+2. Insert a `dive_sites` row pointing `scene_path` at that URL (via psql or an Alembic migration):
+   ```sql
+   INSERT INTO dive_sites
+     (name, latitude, longitude, mag_declination, crs_proj4, z_scale, scene_path)
+   VALUES
+     ('Site Name', 36.50, -121.90, -12.0,
+      '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 2.0,
+      '/data/sites/<slug>/scene.js');
+   ```
 
-No restart needed — Caddy serves it immediately.
+No restart needed — Caddy serves the file immediately and the picker picks up the new row on next page load.
 
 ## Backups
 

@@ -7,9 +7,10 @@ from tests.conftest import TestSession
 async def _seed_site_and_landmarks():
     async with TestSession() as session:
         await session.execute(text("""
-            INSERT INTO dive_sites (id, name, latitude, longitude, mag_declination, crs_proj4, z_scale)
+            INSERT INTO dive_sites (id, name, latitude, longitude, mag_declination, crs_proj4, z_scale, scene_path)
             VALUES (1, 'Point Lobos', 36.55, -121.94, -12.0,
-                    '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 2.0)
+                    '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 2.0,
+                    '/data/sites/point-lobos/scene.js')
         """))
         await session.execute(text("""
             INSERT INTO landmarks (site_id, user_id, name, latitude, longitude, depth_m) VALUES
@@ -66,9 +67,10 @@ async def test_list_landmarks_site_not_found(client: AsyncClient):
 async def test_list_landmarks_empty_when_site_has_none(client: AsyncClient):
     async with TestSession() as session:
         await session.execute(text("""
-            INSERT INTO dive_sites (id, name, latitude, longitude, mag_declination, crs_proj4, z_scale)
+            INSERT INTO dive_sites (id, name, latitude, longitude, mag_declination, crs_proj4, z_scale, scene_path)
             VALUES (2, 'Barren Site', 0, 0, 0,
-                    '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 1.0)
+                    '+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs', 1.0,
+                    '/data/sites/barren/scene.js')
         """))
         await session.commit()
     res = await client.get("/api/sites/2/landmarks")

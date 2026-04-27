@@ -1,5 +1,5 @@
 import "./types";
-import { loadConfig } from "./config";
+import { loadConfig, type SiteConfig } from "./config";
 import { setupMobile, initMobile, startARMode, moveToCurrentLocation } from "./mobile";
 import { runProjector, projectWaypointsAnchored, projectLandmarks } from "./projection";
 import { SegmentLabelManager, computeSegment } from "./segment-labels";
@@ -15,6 +15,7 @@ import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
 import { createAuthPanel } from "./ui/auth-panel";
 import { createPlanPanel, type PlanPanelAPI } from "./ui/plan-panel";
 import { createLandmarkPanel, type LandmarkPanelAPI } from "./ui/landmark-panel";
+import { renderSitePicker } from "./ui/site-picker";
 import "./ui/styles.css";
 
 /** Polls until Q3D.application.scene and .renderer are ready. */
@@ -57,19 +58,22 @@ function waitForSceneReady(app: Q3DApplication): Promise<void> {
 
 /**
  * Bootstrap: configure Q3D, initialize the viewer and mobile controls,
- * then start loading the scene.
+ * then start loading the scene from the site's configured scene_path.
  */
-function bootstrap(): void {
+function bootstrap(config: SiteConfig): void {
   Q3D.Config.coord.latlon = true;
+  // Placeholder viewpoint — overridden once the scene loads by
+  // centerCameraOnSceneWhenReady(), which auto-frames the bounding box.
   Q3D.Config.viewpoint = {
-    lookAt: { x: 598716.3893947866, y: 4052826.0684010955, z: 0.0 },
-    pos: { x: 598317.5217757289, y: 4052163.447469877, z: 279.1472300175813 },
+    lookAt: { x: 0, y: 0, z: 0 },
+    pos: { x: 100, y: -100, z: 100 },
   };
   Q3D.Config.localMode = true;
 
   setupMobile();
 
-  Q3D.Config.AR.MND = 12.0;
+  // AR magnetic-north deviation comes from the active site's config.
+  Q3D.Config.AR.MND = Math.abs(config.magDeclination);
   Q3D.Config.northArrow.enabled = true;
   Q3D.Config.northArrow.color = 0xe31a1c;
 
@@ -91,7 +95,7 @@ function bootstrap(): void {
   patchLoadJSONObjectForSafari(app);
 
   app.loadSceneFile(
-    "./data/index/scene.js",
+    config.scenePath,
     function () {
       app.start();
       if ("AR" in app.urlParams) {
@@ -107,7 +111,7 @@ function bootstrap(): void {
 /**
  * Initialize custom enhancements + UI panels.
  */
-async function initCustom(): Promise<void> {
+async function initCustom(config: SiteConfig): Promise<void> {
   await waitForQ3D();
 
   const app = Q3D.application;
@@ -115,8 +119,6 @@ async function initCustom(): Promise<void> {
     console.error("Q3D not ready");
     return;
   }
-
-  const config = await loadConfig();
 
   // Hydrate the current user (admin flag) before panels render, so the first
   // paint reflects admin affordances. Best-effort: a stale or invalid token
@@ -160,7 +162,7 @@ async function initCustom(): Promise<void> {
   });
   waitForSceneReady(app).then(async () => {
     try {
-      const rows = await getLandmarks(1);
+      const rows = await getLandmarks(config.siteId);
       for (const r of rows) landmarkMgr.add(r);
     } catch (e) {
       console.warn("Landmarks not loaded", e);
@@ -191,6 +193,7 @@ async function initCustom(): Promise<void> {
   if (!panelContainer) return;
 
   planPanel = createPlanPanel(panelContainer, {
+    siteId: config.siteId,
     exportWaypoints: () => waypointMgr.exportWaypoints(app),
     exportSegments: () => {
       const mg = app.measure?.markerGroup;
@@ -228,7 +231,7 @@ async function initCustom(): Promise<void> {
   });
 
   landmarkPanel = createLandmarkPanel(panelContainer, {
-    siteId: 1,
+    siteId: config.siteId,
     metersToFeet: config.metersToFeet,
     setPlacementActive: (flag) => {
       if (flag) {
@@ -257,6 +260,7 @@ async function initCustom(): Promise<void> {
   landmarkMgr.setOnSelect((id) => landmarkPanel?.selectLandmark(id));
 
   createAuthPanel(panelContainer, {
+    siteName: config.siteName,
     onLogin: () => {
       planPanel?.update();
       landmarkPanel?.handleLogin();
@@ -316,5 +320,24 @@ function makeHighlighter(app: Q3DApplication): (seq: number | null) => void {
   };
 }
 
-bootstrap();
-initCustom();
+/**
+ * Entry point: parse `?site=<id>` from the URL. If absent, render the site
+ * picker landing page and stop. Otherwise resolve the site's config first,
+ * then bootstrap Q3D and the panels.
+ */
+async function main(): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("site");
+  const siteId = raw !== null ? Number.parseInt(raw, 10) : NaN;
+
+  if (!Number.isFinite(siteId) || siteId <= 0) {
+    await renderSitePicker(document.body);
+    return;
+  }
+
+  const config = await loadConfig(siteId);
+  bootstrap(config);
+  await initCustom(config);
+}
+
+main();

@@ -18,7 +18,7 @@ A 3D dive route planner for Point Lobos / Monterey Bay bathymetry built on a Qgi
 
 **`frontend/public/site-config.json`:** static fallback for site config (used when the backend API is unreachable). Lives in `public/` so Vite copies it to the dist root and `fetch("./site-config.json")` works in both dev and prod.
 
-**`frontend/data/index/scene.js`:** baked scene (~100 MB, gitignored). Loaded via `app.loadSceneFile`. Calls `app.loadJSONObject({...})` — note it expects `app` as a **global variable**, which `src/main.ts` exposes on `window`. The scene's native CRS is UTM 10N (`+proj=utm +zone=10 +datum=WGS84`). Do not hand-edit; regenerate from QGIS. In production this isn't bundled; it's served from a host bind-mount via Caddy at `/data/*` (see DEPLOY.md).
+**`frontend/data/sites/point-lobos/scene.js`:** baked scene (~100 MB, gitignored). Loaded via `app.loadSceneFile`. Calls `app.loadJSONObject({...})` — note it expects `app` as a **global variable**, which `src/main.ts` exposes on `window`. The scene's native CRS is UTM 10N (`+proj=utm +zone=10 +datum=WGS84`). Do not hand-edit; regenerate from QGIS. In production this isn't bundled; it's served from a host bind-mount via Caddy at `/data/*` (see DEPLOY.md).
 
 **`frontend/src/main.ts`:** the entry point. Runs `bootstrap()` (Q3D config, mobile setup, `app.init()`, scene loading) then `initCustom()` (label hooks, hotkeys, camera centering).
 
@@ -61,7 +61,7 @@ FastAPI + async SQLAlchemy 2.0 + PostGIS. JWT auth (bcrypt passwords, HS256 toke
 
 ### Things to watch out for
 
-- `frontend/public/vendor/Qgis2threejs.js` and `frontend/data/index/scene.js` are generated artifacts. Fixes belong in `frontend/src/` modules, `frontend/src/styles/custom.css`, or `frontend/index.html`, not in the generated files.
+- `frontend/public/vendor/Qgis2threejs.js` and `frontend/data/sites/point-lobos/scene.js` are generated artifacts. Fixes belong in `frontend/src/` modules, `frontend/src/styles/custom.css`, or `frontend/index.html`, not in the generated files.
 - `scene.js` expects `app` on the global scope — `frontend/src/main.ts` sets `window.app = Q3D.application` in `bootstrap()`. Do not remove this.
 - AR mode requires HTTPS (or localhost) for camera/orientation APIs.
 - Qgis2threejs's built-in hotkeys (`W` wireframe, `L` labels, `R` rotate, `I` info, `Esc`, `Backspace`, `Enter`, `Shift+R`, `Shift+S`) are disabled at startup via `disableQ3DHotkeys()` — the vendor listener had no input-focus guard and fired while typing in form fields. Only the custom **Shift+L** (waypoint labels) and **Esc** (exit plan edit mode) remain, registered in `hotkeys.ts`.
