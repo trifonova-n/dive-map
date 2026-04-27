@@ -224,3 +224,42 @@ async def test_delete_landmark_others_returns_404(authed_client: AsyncClient):
         await session.commit()
     res = await authed_client.delete("/api/landmarks/600")
     assert res.status_code == 404
+
+
+async def test_admin_can_update_public_landmark(authed_client: AsyncClient):
+    await _seed_site_and_landmarks()
+    # Promote the registered test user to admin.
+    async with TestSession() as session:
+        await session.execute(text(
+            "UPDATE users SET is_admin = true WHERE email = 'test@example.com'"
+        ))
+        await session.commit()
+
+    res = await authed_client.get("/api/sites/1/landmarks")
+    curated = next(r for r in res.json() if r["user_id"] is None)
+
+    res = await authed_client.patch(
+        f"/api/landmarks/{curated['id']}",
+        json={"name": "Renamed By Admin", "description": "Curator note"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["name"] == "Renamed By Admin"
+    assert data["description"] == "Curator note"
+    # Public landmark stays public after an admin edit.
+    assert data["user_id"] is None
+
+
+async def test_admin_cannot_delete_public_landmark(authed_client: AsyncClient):
+    await _seed_site_and_landmarks()
+    async with TestSession() as session:
+        await session.execute(text(
+            "UPDATE users SET is_admin = true WHERE email = 'test@example.com'"
+        ))
+        await session.commit()
+
+    res = await authed_client.get("/api/sites/1/landmarks")
+    curated = next(r for r in res.json() if r["user_id"] is None)
+
+    res = await authed_client.delete(f"/api/landmarks/{curated['id']}")
+    assert res.status_code == 404

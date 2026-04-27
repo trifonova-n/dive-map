@@ -7,7 +7,7 @@ import { WaypointLabelManager } from "./waypoint-labels";
 import { LandmarkLabelManager } from "./landmark-labels";
 import { patchMeasureTool, setEditMode, setMeasureMode } from "./measure-hooks";
 import { RouteTubeManager } from "./route-tubes";
-import { getLandmarks, type LandmarkAPI } from "./api-client";
+import { fetchMe, getLandmarks, getToken, type LandmarkAPI } from "./api-client";
 import { toLonLatXY } from "./crs";
 import { centerCameraOnSceneWhenReady } from "./camera";
 import { registerHotkeys, disableQ3DHotkeys } from "./hotkeys";
@@ -117,6 +117,17 @@ async function initCustom(): Promise<void> {
   }
 
   const config = await loadConfig();
+
+  // Hydrate the current user (admin flag) before panels render, so the first
+  // paint reflects admin affordances. Best-effort: a stale or invalid token
+  // is cleared inside fetchMe().
+  if (getToken()) {
+    try {
+      await fetchMe();
+    } catch {
+      // ignore network/server errors at boot
+    }
+  }
 
   console.log("\u2705 custom modules loaded (bright-line edition)");
 

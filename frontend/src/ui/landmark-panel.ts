@@ -70,15 +70,20 @@ export function createLandmarkPanel(
 
   function renderBrowse() {
     const loggedIn = api.isLoggedIn();
-    const owned = landmarks.filter((l) => l.user_id != null);
+    const admin = api.isAdmin();
+    // Admins also browse curated (public) landmarks so they can edit them;
+    // regular users only see their own.
+    const visible = admin
+      ? landmarks
+      : landmarks.filter((l) => l.user_id != null);
     let listHtml: string;
     if (!loggedIn) {
       listHtml =
         '<div class="muted-line">Sign in to add your own landmarks</div>';
-    } else if (owned.length) {
+    } else if (visible.length) {
       listHtml =
         '<div class="landmark-list">' +
-        owned
+        visible
           .map(
             (l) =>
               `<div class="landmark-item" data-id="${l.id}">
@@ -99,7 +104,7 @@ export function createLandmarkPanel(
     }
 
     el.innerHTML = `
-      <h3>My Landmarks</h3>
+      <h3>${admin ? "Landmarks" : "My Landmarks"}</h3>
       ${listHtml}
       <div class="actions-row">
         <button class="primary" id="dm-landmark-add" ${
@@ -198,7 +203,11 @@ export function createLandmarkPanel(
       render();
       return;
     }
+    // The list endpoint only returns the caller's own landmarks (plus public
+    // ones), so any non-null user_id seen here is the current user's.
     const ownsIt = l.user_id != null;
+    const canEdit = ownsIt || (l.user_id == null && api.isAdmin());
+    const canDelete = ownsIt;
     const depthLine =
       l.depth_m != null
         ? `depth: ${(Math.abs(l.depth_m) * deps.metersToFeet).toFixed(0)} ft`
@@ -218,10 +227,10 @@ export function createLandmarkPanel(
         ${l.latitude.toFixed(5)}, ${l.longitude.toFixed(5)} · ${depthLine}
       </div>
       ${
-        ownsIt
+        canEdit || canDelete
           ? `<div class="actions-row">
-               <button class="secondary" id="dm-landmark-edit">Edit</button>
-               <button class="danger" id="dm-landmark-delete">Delete</button>
+               ${canEdit ? `<button class="secondary" id="dm-landmark-edit">Edit</button>` : ""}
+               ${canDelete ? `<button class="danger" id="dm-landmark-delete">Delete</button>` : ""}
              </div>
              <div class="error" id="dm-landmark-error" style="display:none"></div>`
           : ""
@@ -250,12 +259,14 @@ export function createLandmarkPanel(
       mode = "browse";
       render();
     });
-    if (ownsIt) {
+    if (canEdit) {
       el.querySelector("#dm-landmark-edit")!.addEventListener("click", () => {
         formError = null;
         mode = "edit-form";
         render();
       });
+    }
+    if (canDelete) {
       el.querySelector("#dm-landmark-delete")!.addEventListener("click", async () => {
         await submitDelete(l.id);
       });
@@ -264,7 +275,10 @@ export function createLandmarkPanel(
 
   function renderEditForm() {
     const l = landmarks.find((x) => x.id === selectedId);
-    if (!l || l.user_id == null) {
+    const canEdit =
+      !!l &&
+      ((l.user_id != null) || (l.user_id == null && api.isAdmin()));
+    if (!l || !canEdit) {
       mode = "detail";
       render();
       return;

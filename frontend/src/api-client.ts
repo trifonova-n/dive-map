@@ -3,6 +3,22 @@ const AUTH = "/auth";
 
 let token: string | null = null;
 
+export interface UserAPI {
+  id: number;
+  email: string;
+  is_admin: boolean;
+}
+
+let currentUser: UserAPI | null = null;
+
+export function getCurrentUser(): UserAPI | null {
+  return currentUser;
+}
+
+export function isAdmin(): boolean {
+  return !!currentUser?.is_admin;
+}
+
 function authHeaders(): Record<string, string> {
   const h: Record<string, string> = { "Content-Type": "application/json" };
   if (token) h["Authorization"] = `Bearer ${token}`;
@@ -73,6 +89,7 @@ export async function register(
   }
   const data = await res.json();
   setToken(data.access_token);
+  await fetchMe().catch(() => undefined);
   return data.access_token;
 }
 
@@ -98,11 +115,29 @@ export async function login(
   }
   const data = await res.json();
   setToken(data.access_token);
+  await fetchMe().catch(() => undefined);
   return data.access_token;
 }
 
 export function logout(): void {
   setToken(null);
+  currentUser = null;
+}
+
+export async function fetchMe(): Promise<UserAPI | null> {
+  if (!getToken()) {
+    currentUser = null;
+    return null;
+  }
+  const res = await fetch(`${AUTH}/me`, { headers: authHeaders() });
+  if (res.status === 401 || res.status === 403) {
+    setToken(null);
+    currentUser = null;
+    return null;
+  }
+  if (!res.ok) throw new Error(`Fetch user failed (${res.status})`);
+  currentUser = (await res.json()) as UserAPI;
+  return currentUser;
 }
 
 // --- Site config ---

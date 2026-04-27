@@ -68,7 +68,11 @@ async def update_landmark(
     db: AsyncSession = Depends(get_db),
 ):
     landmark = await db.get(Landmark, landmark_id)
-    if not landmark or landmark.user_id != user.id:
+    if not landmark:
+        raise HTTPException(status_code=404, detail="Landmark not found")
+    is_owner = landmark.user_id == user.id
+    is_admin_editing_public = user.is_admin and landmark.user_id is None
+    if not (is_owner or is_admin_editing_public):
         raise HTTPException(status_code=404, detail="Landmark not found")
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(landmark, field, value)

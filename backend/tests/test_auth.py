@@ -56,3 +56,17 @@ async def test_login_nonexistent_user(client: AsyncClient):
         json={"email": "nobody@example.com", "password": "pass"},
     )
     assert res.status_code == 401
+
+
+async def test_me_returns_current_user(authed_client: AsyncClient):
+    res = await authed_client.get("/auth/me")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["email"] == "test@example.com"
+    assert data["is_admin"] is False
+    assert isinstance(data["id"], int)
+
+
+async def test_me_requires_auth(client: AsyncClient):
+    res = await client.get("/auth/me")
+    assert res.status_code in (401, 403)
