@@ -15,5 +15,8 @@ backend/app/__pycache__/
 # Large generated scene data (regenerate from QGIS)
 frontend/data/index/scene.js
 
+# Local user-image uploads (dev only; prod uses a host bind mount)
+backend/uploads/
+
 # Production secrets
 .env

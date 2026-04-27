@@ -6,7 +6,7 @@ Single-VPS production setup using Docker Compose, Caddy (auto-HTTPS), and a bind
 
 - **db** — PostGIS 16, named volume `pgdata`
 - **backend** — FastAPI/uvicorn; runs `alembic upgrade head` on every start
-- **caddy** — multi-stage image: builds the Vite frontend, then serves it. Reverse-proxies `/api/*` and `/auth/*` to the backend, serves `/data/*` from `/srv/dive-map/media`, terminates TLS via Let's Encrypt.
+- **caddy** — multi-stage image: builds the Vite frontend, then serves it. Reverse-proxies `/api/*` and `/auth/*` to the backend, serves `/data/*` from `/srv/dive-map/media` and `/uploads/*` from `/srv/dive-map/uploads`, terminates TLS via Let's Encrypt.
 
 ## One-time server setup
 
@@ -39,7 +39,14 @@ Single-VPS production setup using Docker Compose, Caddy (auto-HTTPS), and a bind
    scp frontend/data/index/scene.js root@SERVER:/srv/dive-map/media/index/scene.js
    ```
 
-6. **Deploy:**
+6. **Create the uploads directory** (writable by the backend container's UID 1000):
+   ```bash
+   ssh root@SERVER 'mkdir -p /srv/dive-map/uploads && chown 1000:1000 /srv/dive-map/uploads'
+   ```
+
+   Files written here by the backend (user-uploaded landmark images) are served read-only by Caddy at `/uploads/*`. Include `/srv/dive-map/uploads` in any backups of `/srv/dive-map`.
+
+7. **Deploy:**
    ```bash
    ./deploy.sh
    ```
@@ -90,6 +97,8 @@ The 40 GB CX22 disk handles plenty of photos but not much video. When you need t
 4. Add a backend endpoint that returns presigned upload URLs so the browser can upload large files directly to R2.
 
 No DB schema or app rewrite is required — only how media URLs are constructed changes.
+
+The same path applies to `/srv/dive-map/uploads`: replace the Caddy `/uploads/*` block with a reverse proxy to a public bucket, and have the backend issue presigned PUT URLs from the upload endpoint instead of writing to disk.
 
 ## Troubleshooting
 

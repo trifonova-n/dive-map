@@ -199,6 +199,26 @@ export async function deleteLandmark(landmarkId: number): Promise<void> {
   }
 }
 
+// Multipart upload — does NOT use authHeaders() because the browser must set
+// the Content-Type (with boundary) itself.
+export async function uploadLandmarkImage(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const headers: Record<string, string> = {};
+  const t = getToken();
+  if (t) headers["Authorization"] = `Bearer ${t}`;
+  const res = await fetch(`${BASE}/uploads/landmark-image`, {
+    method: "POST",
+    headers,
+    body: fd,
+  });
+  if (!res.ok) {
+    throw new Error(await extractError(res, `Image upload failed (${res.status}).`));
+  }
+  const data = await res.json();
+  return data.url as string;
+}
+
 // --- Dive plans ---
 
 export interface DivePlanAPI {

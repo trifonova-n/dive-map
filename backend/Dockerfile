@@ -13,7 +13,7 @@ RUN apt-get update \
 COPY . .
 RUN pip install --no-cache-dir -e .
 
-RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
+RUN useradd --create-home --shell /bin/bash --uid 1000 app && chown -R app:app /app
 USER app
 
 EXPOSE 8000

@@ -21,6 +21,8 @@ services:
     environment:
       DIVEMAP_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       DIVEMAP_JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - /srv/dive-map/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -37,6 +39,7 @@ services:
       - "443:443"
     volumes:
       - /srv/dive-map/media:/srv/media:ro
+      - /srv/dive-map/uploads:/srv/uploads:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

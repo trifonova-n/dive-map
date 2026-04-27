@@ -156,9 +156,11 @@ export function createLandmarkPanel(
       <label class="landmark-form-label">Description
         <textarea id="dm-landmark-desc" rows="3" placeholder="Optional"></textarea>
       </label>
-      <label class="landmark-form-label">Image URL
-        <input type="text" id="dm-landmark-image" maxlength="500" placeholder="Optional" />
+      <label class="landmark-form-label">Image
+        <input type="file" id="dm-landmark-image-file" accept="image/jpeg,image/png,image/webp" />
       </label>
+      <div class="upload-status" id="dm-landmark-upload-status"></div>
+      <input type="hidden" id="dm-landmark-image" />
       <div class="landmark-image-slot"></div>
       <div class="error" id="dm-landmark-error" style="display:${formError ? "block" : "none"}">${
         formError ? escapeHtml(formError) : ""
@@ -169,9 +171,13 @@ export function createLandmarkPanel(
       </div>
     `;
     (el.querySelector("#dm-landmark-name") as HTMLInputElement).focus();
-    wireImagePreview(
-      el.querySelector("#dm-landmark-image") as HTMLInputElement,
-      el.querySelector(".landmark-image-slot") as HTMLElement
+    const createImageInput = el.querySelector("#dm-landmark-image") as HTMLInputElement;
+    const createPreviewSlot = el.querySelector(".landmark-image-slot") as HTMLElement;
+    wireImagePreview(createImageInput, createPreviewSlot);
+    wireFileUpload(
+      el.querySelector("#dm-landmark-image-file") as HTMLInputElement,
+      createImageInput,
+      el.querySelector("#dm-landmark-upload-status") as HTMLElement
     );
     el.querySelector("#dm-landmark-save")!.addEventListener("click", async () => {
       await submitCreateForm();
@@ -281,9 +287,11 @@ export function createLandmarkPanel(
       <label class="landmark-form-label">Description
         <textarea id="dm-landmark-desc" rows="3"></textarea>
       </label>
-      <label class="landmark-form-label">Image URL
-        <input type="text" id="dm-landmark-image" maxlength="500" />
+      <label class="landmark-form-label">Image
+        <input type="file" id="dm-landmark-image-file" accept="image/jpeg,image/png,image/webp" />
       </label>
+      <div class="upload-status" id="dm-landmark-upload-status"></div>
+      <input type="hidden" id="dm-landmark-image" />
       <div class="landmark-image-slot"></div>
       <div class="error" id="dm-landmark-error" style="display:${formError ? "block" : "none"}">${
         formError ? escapeHtml(formError) : ""
@@ -300,6 +308,11 @@ export function createLandmarkPanel(
     imageInput.value = l.image_url ?? "";
     const previewSlot = el.querySelector(".landmark-image-slot") as HTMLElement;
     wireImagePreview(imageInput, previewSlot);
+    wireFileUpload(
+      el.querySelector("#dm-landmark-image-file") as HTMLInputElement,
+      imageInput,
+      el.querySelector("#dm-landmark-upload-status") as HTMLElement
+    );
 
     el.querySelector("#dm-landmark-back")!.addEventListener("click", () => {
       formError = null;
@@ -517,4 +530,32 @@ function wireImagePreview(input: HTMLInputElement, slot: HTMLElement): void {
     debounce = window.setTimeout(refresh, 400);
   });
   refresh();
+}
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+function wireFileUpload(
+  fileInput: HTMLInputElement,
+  hiddenUrl: HTMLInputElement,
+  status: HTMLElement
+): void {
+  fileInput.addEventListener("change", async () => {
+    const f = fileInput.files?.[0];
+    if (!f) return;
+    if (f.size > MAX_UPLOAD_BYTES) {
+      status.textContent = "Image is too large. Max 5 MB.";
+      fileInput.value = "";
+      return;
+    }
+    status.textContent = "Uploading…";
+    try {
+      const url = await api.uploadLandmarkImage(f);
+      hiddenUrl.value = url;
+      status.textContent = "";
+      hiddenUrl.dispatchEvent(new Event("input"));
+    } catch (e) {
+      status.textContent = (e as Error).message;
+      fileInput.value = "";
+    }
+  });
 }
