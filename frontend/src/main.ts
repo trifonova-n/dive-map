@@ -6,6 +6,7 @@ import { SegmentLabelManager, computeSegment } from "./segment-labels";
 import { WaypointLabelManager } from "./waypoint-labels";
 import { LandmarkLabelManager } from "./landmark-labels";
 import { patchMeasureTool, setEditMode, setMeasureMode } from "./measure-hooks";
+import { patchQueryPopup } from "./popup-hooks";
 import { RouteTubeManager } from "./route-tubes";
 import { fetchMe, getLandmarks, getToken, type LandmarkAPI } from "./api-client";
 import { toLonLatXY } from "./crs";
@@ -180,6 +181,7 @@ async function initCustom(config: SiteConfig): Promise<void> {
     onWaypointAdded: () => planPanel?.markDirty(),
     onLandmarkPointPicked: (pt) => landmarkPanel?.handlePlacementPick(pt),
   });
+  patchQueryPopup(config);
   disableQ3DHotkeys(app);
   registerHotkeys(waypointMgr, {
     onEscape: () =>
