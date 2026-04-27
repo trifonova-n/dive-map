@@ -57,7 +57,7 @@ describe("loadConfig", () => {
     const config = await loadConfig();
     expect(config.magDeclination).toBe(-12.0);
     expect(config.metersToFeet).toBe(3.28084);
-    expect(config.lineBrightness).toBe("0xffff66");
+    expect(config.lineBrightness).toBe("0xc026d3");
     expect(config.labelOffsetPx).toBe(6);
     expect(config.cameraDistanceFactor).toBe(1.5);
   });
