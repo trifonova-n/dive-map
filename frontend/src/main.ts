@@ -251,6 +251,53 @@ async function initCustom(config: SiteConfig): Promise<void> {
       const depth_m = mapPt.z < 0 ? Math.abs(mapPt.z) : null;
       return { latitude: lat, longitude: lon, depth_m };
     },
+    resolveLatLon: (lat, lon) => {
+      // Project lat/lon to world XY, then raycast straight down against the
+      // DEM layers to read the bathymetry depth at that point. Mirrors the
+      // current-location pattern in mobile.ts:293–319.
+      const w = app.scene.toWorldCoordinates({ x: lon, y: lat, z: 0 }, true);
+      const objects: THREE.Object3D[] = [];
+      for (const lyrId in app.scene.mapLayers) {
+        const layer = app.scene.mapLayers[lyrId] as {
+          visibleObjects?: () => THREE.Object3D[];
+        };
+        if ((layer as unknown) instanceof Q3DDEMLayer) {
+          objects.push(...(layer.visibleObjects?.() || []));
+        }
+      }
+      const origin = new THREE.Vector3(w.x, w.y, 1e6);
+      const ray = new THREE.Raycaster();
+      ray.set(origin, new THREE.Vector3(0, 0, -1));
+      const hits = ray.intersectObjects(objects);
+      if (hits.length) {
+        const z = hits[0].point.z;
+        const mapZ = app.scene.toMapCoordinates({
+          x: w.x,
+          y: w.y,
+          z,
+        } as THREE.Vector3).z;
+        return {
+          world: { x: w.x, y: w.y, z },
+          depth_m: mapZ < 0 ? Math.abs(mapZ) : null,
+        };
+      }
+      // No terrain under that point — surface, no depth.
+      return { world: { x: w.x, y: w.y, z: 0 }, depth_m: null };
+    },
+    setPendingMarker: (world) => {
+      const scene = app.scene as unknown as {
+        add: (o: THREE.Object3D) => void;
+        remove: (o: THREE.Object3D) => void;
+      };
+      if (!world) {
+        scene.remove(app.queryMarker);
+      } else {
+        app.queryMarker.position.set(world.x, world.y, world.z);
+        app.queryMarker.visible = true;
+        scene.add(app.queryMarker);
+      }
+      app.render();
+    },
     onLandmarkCreated: (l) => landmarkMgr.add(l),
     onLandmarkUpdated: (l) => landmarkMgr.update(l),
     onLandmarkRemoved: (id) => landmarkMgr.remove(id),

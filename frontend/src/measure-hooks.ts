@@ -36,10 +36,10 @@ export function patchMeasureTool(
 
   measure.addPoint = function (pt: THREE.Vector3) {
     if (mode === "landmark") {
-      // One-shot pick: forward the world coord to the landmark panel, then
-      // exit the mode. Do NOT let Q3D accumulate a marker/line/waypoint.
-      mode = "off";
-      measure.isActive = false;
+      // Forward the pick and stay in landmark mode so the user can re-click
+      // the map to relocate the pending point while the create form is open.
+      // The panel exits the mode (via setMeasureMode) once the landmark is
+      // saved or cancelled. Do NOT let Q3D accumulate a marker/line/waypoint.
       opts.onLandmarkPointPicked?.(pt);
       return undefined;
     }

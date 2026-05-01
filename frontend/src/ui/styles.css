@@ -338,6 +338,15 @@
   margin-bottom: 8px;
 }
 
+#divemap-panel .landmark-coords-edit {
+  margin-bottom: 8px;
+}
+
+#divemap-panel .landmark-coords-edit .landmark-coords-line {
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
 #divemap-panel .landmark-form-label {
   display: block;
   font-size: 11px;

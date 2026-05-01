@@ -19,6 +19,20 @@ export interface LandmarkPanelDeps {
     longitude: number;
     depth_m: number | null;
   };
+  /**
+   * Resolve a hand-typed lat/lon to its world-space position and the
+   * bathymetry depth at that point (raycast against the terrain). depth_m
+   * is null when no terrain sits under the point (surface).
+   */
+  resolveLatLon: (lat: number, lon: number) => {
+    world: { x: number; y: number; z: number };
+    depth_m: number | null;
+  };
+  /**
+   * Show or hide the pending-landmark marker on the map. Pass `null` to
+   * hide. Called whenever the pending position changes.
+   */
+  setPendingMarker: (world: { x: number; y: number; z: number } | null) => void;
   /** Mirror scene state when landmarks change. */
   onLandmarkCreated: (landmark: LandmarkAPI) => void;
   onLandmarkUpdated: (landmark: LandmarkAPI) => void;
@@ -44,6 +58,7 @@ interface PendingPosition {
   latitude: number;
   longitude: number;
   depth_m: number | null;
+  world: { x: number; y: number; z: number };
 }
 
 export function createLandmarkPanel(
@@ -136,7 +151,9 @@ export function createLandmarkPanel(
       </div>
     `;
     el.querySelector("#dm-landmark-cancel")!.addEventListener("click", () => {
-      cancelPlacement();
+      exitCreateFlow();
+      mode = "browse";
+      render();
     });
   }
 
@@ -146,14 +163,16 @@ export function createLandmarkPanel(
       render();
       return;
     }
-    const depthLine =
-      pendingPosition.depth_m != null
-        ? `depth: ${(pendingPosition.depth_m * deps.metersToFeet).toFixed(0)} ft`
-        : "surface";
     el.innerHTML = `
       <h3>New Landmark</h3>
-      <div class="landmark-coords-line">
-        ${pendingPosition.latitude.toFixed(5)}, ${pendingPosition.longitude.toFixed(5)} · ${depthLine}
+      <div class="landmark-coords-edit">
+        <label class="landmark-form-label">Latitude
+          <input type="number" id="dm-landmark-lat" step="0.00001" inputmode="decimal" />
+        </label>
+        <label class="landmark-form-label">Longitude
+          <input type="number" id="dm-landmark-lon" step="0.00001" inputmode="decimal" />
+        </label>
+        <div class="landmark-coords-line" id="dm-landmark-depth-readout"></div>
       </div>
       <label class="landmark-form-label">Name
         <input type="text" id="dm-landmark-name" maxlength="120" placeholder="Required" />
@@ -175,6 +194,8 @@ export function createLandmarkPanel(
         <button class="secondary" id="dm-landmark-cancel">Cancel</button>
       </div>
     `;
+    writeCoordsToInputs(pendingPosition);
+    wireCoordInputs();
     (el.querySelector("#dm-landmark-name") as HTMLInputElement).focus();
     const createImageInput = el.querySelector("#dm-landmark-image") as HTMLInputElement;
     const createPreviewSlot = el.querySelector(".landmark-image-slot") as HTMLElement;
@@ -188,8 +209,7 @@ export function createLandmarkPanel(
       await submitCreateForm();
     });
     el.querySelector("#dm-landmark-cancel")!.addEventListener("click", () => {
-      pendingPosition = null;
-      formError = null;
+      exitCreateFlow();
       mode = "browse";
       render();
     });
@@ -352,16 +372,78 @@ export function createLandmarkPanel(
     render();
   }
 
-  function cancelPlacement() {
-    if (mode === "placing") {
-      deps.setPlacementActive(false);
-      mode = "browse";
-      render();
+  // Tear down everything that the placing/create-form modes own: hide the
+  // pending marker and turn off landmark measure mode. Caller is responsible
+  // for transitioning `mode` and re-rendering.
+  function exitCreateFlow() {
+    pendingPosition = null;
+    formError = null;
+    deps.setPendingMarker(null);
+    deps.setPlacementActive(false);
+  }
+
+  function writeCoordsToInputs(p: PendingPosition): void {
+    const lat = el.querySelector("#dm-landmark-lat") as HTMLInputElement | null;
+    const lon = el.querySelector("#dm-landmark-lon") as HTMLInputElement | null;
+    if (lat) lat.value = p.latitude.toFixed(5);
+    if (lon) lon.value = p.longitude.toFixed(5);
+    updateDepthReadout(p.depth_m);
+  }
+
+  function updateDepthReadout(depth_m: number | null): void {
+    const out = el.querySelector("#dm-landmark-depth-readout");
+    if (!out) return;
+    out.textContent =
+      depth_m == null
+        ? "surface"
+        : `depth: ${(depth_m * deps.metersToFeet).toFixed(0)} ft`;
+  }
+
+  // Read + validate the lat/lon inputs. Returns null on invalid input.
+  function readCoordsFromInputs(): { lat: number; lon: number } | null {
+    const lat = Number(
+      (el.querySelector("#dm-landmark-lat") as HTMLInputElement).value
+    );
+    const lon = Number(
+      (el.querySelector("#dm-landmark-lon") as HTMLInputElement).value
+    );
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return null;
+    if (!Number.isFinite(lon) || lon < -180 || lon > 180) return null;
+    return { lat, lon };
+  }
+
+  // On blur/Enter on either coord input: validate, resolve depth from the
+  // terrain, update pendingPosition, and move the on-map marker.
+  function wireCoordInputs(): void {
+    function commit() {
+      const parsed = readCoordsFromInputs();
+      if (!parsed) {
+        setFormError("Latitude must be in [-90, 90] and longitude in [-180, 180].");
+        return;
+      }
+      const resolved = deps.resolveLatLon(parsed.lat, parsed.lon);
+      pendingPosition = {
+        latitude: parsed.lat,
+        longitude: parsed.lon,
+        depth_m: resolved.depth_m,
+        world: resolved.world,
+      };
+      formError = null;
+      const errEl = el.querySelector("#dm-landmark-error") as HTMLElement | null;
+      if (errEl) errEl.style.display = "none";
+      updateDepthReadout(pendingPosition.depth_m);
+      deps.setPendingMarker(pendingPosition.world);
     }
+    el.querySelector("#dm-landmark-lat")?.addEventListener("change", commit);
+    el.querySelector("#dm-landmark-lon")?.addEventListener("change", commit);
   }
 
   async function submitCreateForm() {
-    if (!pendingPosition) return;
+    const parsed = readCoordsFromInputs();
+    if (!parsed) {
+      setFormError("Latitude must be in [-90, 90] and longitude in [-180, 180].");
+      return;
+    }
     const name = (el.querySelector("#dm-landmark-name") as HTMLInputElement).value.trim();
     const description = (el.querySelector("#dm-landmark-desc") as HTMLTextAreaElement).value.trim();
     const image_url = (el.querySelector("#dm-landmark-image") as HTMLInputElement).value.trim();
@@ -369,19 +451,21 @@ export function createLandmarkPanel(
       setFormError("Give your landmark a name.");
       return;
     }
+    // Re-resolve depth so it matches the typed coords even if the user hit
+    // Save without blurring the input first.
+    const resolved = deps.resolveLatLon(parsed.lat, parsed.lon);
     try {
       const created = await api.createLandmark(deps.siteId, {
         name,
-        latitude: pendingPosition.latitude,
-        longitude: pendingPosition.longitude,
-        depth_m: pendingPosition.depth_m,
+        latitude: parsed.lat,
+        longitude: parsed.lon,
+        depth_m: resolved.depth_m,
         description: description || null,
         image_url: image_url || null,
       });
       landmarks.push(created);
       deps.onLandmarkCreated(created);
-      pendingPosition = null;
-      formError = null;
+      exitCreateFlow();
       selectedId = created.id;
       mode = "detail";
       render();
@@ -444,7 +528,7 @@ export function createLandmarkPanel(
   function selectLandmark(id: number) {
     // If a form is open, don't disrupt it.
     if (mode === "create-form" || mode === "edit-form") return;
-    if (mode === "placing") cancelPlacement();
+    if (mode === "placing") exitCreateFlow();
     selectedId = id;
     mode = "detail";
     render();
@@ -475,22 +559,34 @@ export function createLandmarkPanel(
   return {
     selectLandmark,
     handlePlacementPick: (pt) => {
-      if (mode !== "placing") return;
+      // First click in placing mode opens the form. Subsequent clicks in
+      // create-form mode relocate the pending point — we update the marker
+      // and the input fields in place (don't re-render the form, which would
+      // wipe what the user has already typed in name/description).
+      if (mode !== "placing" && mode !== "create-form") return;
       const pos = deps.worldToLatLonDepth(pt);
-      pendingPosition = pos;
-      deps.setPlacementActive(false);
-      formError = null;
-      mode = "create-form";
-      render();
+      pendingPosition = {
+        ...pos,
+        world: { x: pt.x, y: pt.y, z: pt.z },
+      };
+      deps.setPendingMarker(pendingPosition.world);
+      if (mode === "placing") {
+        formError = null;
+        mode = "create-form";
+        render();
+      } else {
+        writeCoordsToInputs(pendingPosition);
+      }
     },
     handleLogin: async () => {
+      if (mode === "placing" || mode === "create-form") exitCreateFlow();
       await refetchAndReset();
       mode = "browse";
       selectedId = null;
       render();
     },
     handleLogout: async () => {
-      if (mode === "placing") deps.setPlacementActive(false);
+      if (mode === "placing" || mode === "create-form") exitCreateFlow();
       selectedId = null;
       pendingPosition = null;
       mode = "browse";
@@ -498,14 +594,15 @@ export function createLandmarkPanel(
       render();
     },
     handleEscape: () => {
-      if (mode === "placing") {
-        cancelPlacement();
+      if (mode === "placing" || mode === "create-form") {
+        exitCreateFlow();
+        mode = "browse";
+        render();
         return true;
       }
-      if (mode === "create-form" || mode === "edit-form") {
+      if (mode === "edit-form") {
         formError = null;
-        pendingPosition = null;
-        mode = selectedId != null && mode === "edit-form" ? "detail" : "browse";
+        mode = selectedId != null ? "detail" : "browse";
         render();
         return true;
       }
