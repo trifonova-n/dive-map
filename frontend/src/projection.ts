@@ -24,6 +24,40 @@ export interface LandmarkProjectorRecord {
 }
 
 /**
+ * Screen-space overlap test between two rects, expanded by `margin` px on all
+ * sides so labels that merely kiss edges still count as overlapping.
+ */
+function rectsOverlap(a: DOMRect, b: DOMRect, margin: number): boolean {
+  return (
+    a.left - margin < b.right &&
+    a.right + margin > b.left &&
+    a.top - margin < b.bottom &&
+    a.bottom + margin > b.top
+  );
+}
+
+/** Gap (px) required between kept labels so they don't visually touch. */
+const LABEL_DECLUTTER_MARGIN_PX = 2;
+
+/**
+ * Greedy screen-space declutter. `rects` are candidate label boxes in priority
+ * order (earlier = higher priority). Returns a parallel boolean array: `true`
+ * keeps the label; `false` hides it because it overlaps an already-kept,
+ * higher-priority label. A label clear of every kept box is always kept, so
+ * isolated labels survive and dense clusters thin out to a non-overlapping set.
+ */
+function greedyDeclutter(rects: DOMRect[]): boolean[] {
+  const kept: DOMRect[] = [];
+  return rects.map((r) => {
+    for (const k of kept) {
+      if (rectsOverlap(r, k, LABEL_DECLUTTER_MARGIN_PX)) return false;
+    }
+    kept.push(r);
+    return true;
+  });
+}
+
+/**
  * Projects an array of labels (used for segment labels) from 3D to 2D
  * each frame, centering each label div at the projected point.
  */
@@ -38,11 +72,19 @@ export function runProjector(
   function tick() {
     const rect = app.renderer.domElement.getBoundingClientRect();
     const cam = app.camera;
+
+    // Pass 1: position every in-front label (as block); hide those behind the
+    // camera. Overlap culling waits for pass 2, once boxes can be measured.
+    const shown: LabelRecord[] = [];
     for (const lbl of labelArray) {
       v.copy(lbl.position).project(cam);
+      if (v.z >= 1) {
+        lbl.div.style.display = "none";
+        continue;
+      }
       const x = (v.x + 1) / 2 * rect.width + rect.left;
       const y = (-v.y + 1) / 2 * rect.height + rect.top;
-      lbl.div.style.display = v.z < 1 ? "block" : "none";
+      lbl.div.style.display = "block";
       lbl.div.style.left = `${x}px`;
       lbl.div.style.top = `${y}px`;
 
@@ -56,7 +98,16 @@ export function runProjector(
         const deg = (Math.atan2(dxs, -dys) * 180) / Math.PI;
         lbl.arrow.style.transform = `rotate(${deg.toFixed(1)}deg)`;
       }
+      shown.push(lbl);
     }
+
+    // Pass 2: measure the positioned boxes in one batch, then hide any that
+    // overlap an earlier (route-order priority) kept label.
+    const keep = greedyDeclutter(shown.map((l) => l.div.getBoundingClientRect()));
+    for (let i = 0; i < shown.length; i++) {
+      if (!keep[i]) shown[i].div.style.display = "none";
+    }
+
     requestAnimationFrame(tick);
   }
   tick();
@@ -108,12 +159,7 @@ export function projectLandmarks(
         if (r.div.style.display === "none") continue;
         const lr = r.div.getBoundingClientRect();
         for (const o of obstacles) {
-          if (
-            lr.left < o.right &&
-            lr.right > o.left &&
-            lr.top < o.bottom &&
-            lr.bottom > o.top
-          ) {
+          if (rectsOverlap(lr, o, 0)) {
             r.div.style.display = "none";
             break;
           }
@@ -140,27 +186,36 @@ export function projectWaypointsAnchored(
   function tick() {
     const rect = app.renderer.domElement.getBoundingClientRect();
     const cam = app.camera;
+    const visible = isVisible();
 
+    // Pass 1: position every visible in-front label; hide the rest.
+    const shown: HTMLDivElement[] = [];
     for (const { div, marker, offsetPx } of waypointLabels.values()) {
       v.copy(marker.position).project(cam);
+      const inFront = v.z < 1;
+      if (!visible || !inFront) {
+        div.style.display = "none";
+        continue;
+      }
+
       const x = (v.x + 1) * 0.5 * rect.width + rect.left;
       const y = (1 - v.y) * 0.5 * rect.height + rect.top;
 
-      const inFront = v.z < 1;
-      const shouldShow = isVisible() && inFront;
-      div.style.display = shouldShow ? "block" : "none";
-      if (!shouldShow) continue;
+      div.style.display = "block";
+      div.style.transform = "none";
+      div.style.transformOrigin = "top right";
 
       const w = div.offsetWidth;
       const h = div.offsetHeight;
+      div.style.left = `${Math.round(x - w - offsetPx)}px`;
+      div.style.top = `${Math.round(y - h - offsetPx)}px`;
+      shown.push(div);
+    }
 
-      const left = Math.round(x - w - offsetPx);
-      const top = Math.round(y - h - offsetPx);
-
-      div.style.transform = "none";
-      div.style.transformOrigin = "top right";
-      div.style.left = `${left}px`;
-      div.style.top = `${top}px`;
+    // Pass 2: hide labels that overlap an earlier (route-order priority) kept one.
+    const keep = greedyDeclutter(shown.map((d) => d.getBoundingClientRect()));
+    for (let i = 0; i < shown.length; i++) {
+      if (!keep[i]) shown[i].style.display = "none";
     }
 
     requestAnimationFrame(tick);
