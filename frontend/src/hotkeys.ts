@@ -3,6 +3,8 @@ import type { WaypointLabelManager } from "./waypoint-labels";
 export interface HotkeyOptions {
   /** Return true if Escape was handled (prevents Q3D's handler from firing). */
   onEscape?: () => boolean;
+  /** Advance the movement-speed selection (Shift+T). */
+  onCycleSpeed?: () => void;
 }
 
 /**
@@ -19,6 +21,7 @@ export function disableQ3DHotkeys(app: Q3DApplication): void {
 /**
  * Registers keyboard shortcuts.
  * Shift+L toggles waypoint label visibility.
+ * Shift+T cycles the movement-speed selection.
  * Escape (when onEscape returns true) exits plan-panel edit mode.
  */
 export function registerHotkeys(
@@ -43,6 +46,20 @@ export function registerHotkeys(
         e.preventDefault();
         e.stopImmediatePropagation();
         waypointMgr.toggle();
+        return;
+      }
+
+      const isShiftT =
+        e.shiftKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        (key === "T" || key === "t");
+
+      if (isShiftT && opts.onCycleSpeed) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        opts.onCycleSpeed();
         return;
       }
 

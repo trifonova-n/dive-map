@@ -16,6 +16,7 @@ import { patchLoadJSONObjectForSafari } from "./safari-texture-fix";
 import { createAuthPanel } from "./ui/auth-panel";
 import { createPlanPanel, type PlanPanelAPI } from "./ui/plan-panel";
 import { createLandmarkPanel, type LandmarkPanelAPI } from "./ui/landmark-panel";
+import { createSpeedPanel, type SpeedPanelAPI } from "./ui/speed-panel";
 import { renderSitePicker } from "./ui/site-picker";
 import "./ui/styles.css";
 
@@ -174,6 +175,7 @@ async function initCustom(config: SiteConfig): Promise<void> {
   // once they're created below.
   let planPanel: PlanPanelAPI | null = null;
   let landmarkPanel: LandmarkPanelAPI | null = null;
+  let speedPanel: SpeedPanelAPI | null = null;
 
   const highlightWaypoint = makeHighlighter(app);
 
@@ -187,12 +189,24 @@ async function initCustom(config: SiteConfig): Promise<void> {
     onEscape: () =>
       (planPanel?.handleEscape() ?? false) ||
       (landmarkPanel?.handleEscape() ?? false),
+    onCycleSpeed: () => speedPanel?.cycle(),
   });
   centerCameraOnSceneWhenReady(app, config);
 
   // --- UI panels ---
   const panelContainer = document.getElementById("divemap-panel");
   if (!panelContainer) return;
+
+  // Speed selector: created before the plan panel so the plan panel can read
+  // the current speed for its total-time readout. Selecting a speed reveals
+  // per-leg times; Off (the default) hides them.
+  speedPanel = createSpeedPanel(panelContainer, {
+    onChange: (v) => {
+      segmentMgr.setSpeed(v);
+      planPanel?.update();
+    },
+  });
+  segmentMgr.setSpeed(speedPanel.getSpeed()); // apply persisted selection on load
 
   planPanel = createPlanPanel(panelContainer, {
     siteId: config.siteId,
@@ -230,6 +244,7 @@ async function initCustom(config: SiteConfig): Promise<void> {
     setEditMode: (flag) => setEditMode(app, flag),
     highlightWaypoint,
     metersToFeet: config.metersToFeet,
+    getSelectedSpeedMPerMin: () => speedPanel?.getSpeed() ?? null,
   });
 
   landmarkPanel = createLandmarkPanel(panelContainer, {
