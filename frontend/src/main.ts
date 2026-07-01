@@ -334,6 +334,13 @@ async function initCustom(config: SiteConfig): Promise<void> {
       landmarkPanel?.handleLogout();
     },
   });
+
+  // Mobile: toggle the panel column overlay (see mobile.css @media block).
+  const fab = document.getElementById("mobile-panel-fab");
+  fab?.addEventListener("click", () => {
+    const open = document.body.classList.toggle("panel-open");
+    fab.setAttribute("aria-expanded", String(open));
+  });
 }
 
 /**

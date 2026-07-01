@@ -211,3 +211,51 @@ body {
   bottom: auto;
   top: 54px;
 }
+
+/* FAB hidden on desktop; panel column keeps its normal sidebar behavior. */
+#mobile-panel-fab {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Bottom-center FAB, above the panel overlay. */
+  #mobile-panel-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 20px;
+    z-index: 20001; /* above #divemap-panel (20000) */
+  }
+
+  #mobile-panel-fab .fab-icon-close {
+    display: none;
+  }
+  body.panel-open #mobile-panel-fab .fab-icon-open {
+    display: none;
+  }
+  body.panel-open #mobile-panel-fab .fab-icon-close {
+    display: inline;
+  }
+
+  /* Panel column hidden by default -> map is full-bleed.
+     Base #divemap-panel (ui/styles.css) never sets `display`, so this wins cleanly. */
+  #divemap-panel {
+    display: none;
+  }
+
+  /* When open, a single scrollable overlay. `body.panel-open #divemap-panel`
+     (1 id + 1 class + 1 elem) outranks base `#divemap-panel` (1 id), so the
+     position/top/right overrides apply regardless of stylesheet order. */
+  body.panel-open #divemap-panel {
+    display: block;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 88px; /* clear the FAB */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
