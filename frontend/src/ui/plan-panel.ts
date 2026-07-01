@@ -1,4 +1,5 @@
 import * as api from "../api-client";
+import { formatSwimTime, swimTimeSeconds } from "../speed";
 
 export interface WaypointInput {
   latitude: number;
@@ -20,6 +21,8 @@ export interface PlanPanelDeps {
   setEditMode: (flag: boolean) => void;
   highlightWaypoint: (seq: number | null) => void;
   metersToFeet: number;
+  /** Selected movement speed in m/min, or `null` for Off (no total time). */
+  getSelectedSpeedMPerMin: () => number | null;
 }
 
 export interface PlanPanelAPI {
@@ -365,7 +368,17 @@ export function createPlanPanel(
       Math.max(...wps.map((w) => w.depth_m)) * deps.metersToFeet;
     const totalFt = totalDistanceMeters(wps) * deps.metersToFeet;
     const wpLabel = wps.length === 1 ? "waypoint" : "waypoints";
-    return `<div class="summary-strip">${wps.length} ${wpLabel} · ${totalFt.toFixed(0)} ft · max ${maxDepthFt.toFixed(0)} ft</div>`;
+    // Total swim time, only when a speed is selected. Summed from the 3D
+    // segment lengths (matching the per-leg labels), not the horizontal total.
+    const speed = deps.getSelectedSpeedMPerMin();
+    let timeStr = "";
+    if (speed !== null) {
+      const segFt = deps
+        .exportSegments()
+        .reduce((sum, s) => sum + s.distFt, 0);
+      timeStr = ` · ${formatSwimTime(swimTimeSeconds(segFt, speed, deps.metersToFeet))} @ ${speed} m/min`;
+    }
+    return `<div class="summary-strip">${wps.length} ${wpLabel} · ${totalFt.toFixed(0)} ft · max ${maxDepthFt.toFixed(0)} ft${timeStr}</div>`;
   }
 
   function waypointListHtml(

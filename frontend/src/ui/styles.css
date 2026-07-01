@@ -486,3 +486,45 @@
   margin-bottom: 6px;
 }
 
+/* Speed selector: pill row (desktop) + cycle button (narrow / AR). */
+#divemap-panel .speed-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#divemap-panel .speed-pill {
+  flex: 1 1 auto;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ddd;
+}
+
+#divemap-panel .speed-pill.active {
+  background: #4a9eff;
+  color: #fff;
+}
+
+#divemap-panel .speed-cycle-btn {
+  display: none;
+  width: 100%;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ddd;
+}
+
+#divemap-panel .speed-cycle-btn.active {
+  background: #4a9eff;
+  color: #fff;
+}
+
+/* Narrow screens / AR: the 5-pill row won't fit — swap to the cycle button. */
+@media (max-width: 600px) {
+  #divemap-panel .speed-pills {
+    display: none;
+  }
+  #divemap-panel .speed-cycle-btn {
+    display: block;
+  }
+}
+

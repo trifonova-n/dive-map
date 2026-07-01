@@ -1,6 +1,7 @@
 import type { SiteConfig } from "./config";
 import { makeDivLabel } from "./labels";
 import type { LabelRecord } from "./projection";
+import { formatSwimTime, swimTimeSeconds } from "./speed";
 
 /**
  * Pure computation: distance in feet and bearings between two 3D points.
@@ -23,20 +24,28 @@ export function computeSegment(
 }
 
 /**
- * Two-line HTML: neutral distance on top, rotated compass needle + heading below.
- * Needle uses `trueBearing` so it visually aligns with the on-screen line; the
- * numeric readout uses magnetic `heading` for diver compass use.
+ * Distance on top, rotated compass needle + heading below, and — when a speed
+ * is selected — the leg's swim time as a third line. Needle uses `trueBearing`
+ * so it visually aligns with the on-screen line; the numeric readout uses
+ * magnetic `heading` for diver compass use.
  */
-function buildSegmentHtml(distFt: number, heading: number, trueBearing: number): string {
+function buildSegmentHtml(
+  distFt: number,
+  heading: number,
+  trueBearing: number,
+  timeText?: string
+): string {
   const hdg = heading.toFixed(1);
   // Elongated kite shape with a notched base — tip unambiguous at any rotation.
   const needle =
     `<svg class="seg-arrow" viewBox="-5 -7 10 14" style="transform:rotate(${trueBearing.toFixed(1)}deg)">` +
     `<polygon points="0,-7 4,6 0,3 -4,6" fill="currentColor"/>` +
     `</svg>`;
+  const time = timeText ? `<span class="seg-time">${timeText}</span>` : "";
   return (
     `<span class="seg-dist">${distFt.toFixed(1)} ft</span>` +
-    `<span class="seg-hdg">${needle}${hdg}°M</span>`
+    `<span class="seg-hdg">${needle}${hdg}°M</span>` +
+    time
   );
 }
 
@@ -46,8 +55,41 @@ function buildSegmentHtml(distFt: number, heading: number, trueBearing: number):
  */
 export class SegmentLabelManager {
   readonly labels: LabelRecord[] = [];
+  /** Selected movement speed in m/min, or `null` for Off (no time shown). */
+  private selectedSpeed: number | null = null;
 
   constructor(private config: SiteConfig) {}
+
+  /** Swim-time text for a leg at the current speed, or `undefined` when Off. */
+  private timeTextFor(distFt: number): string | undefined {
+    if (this.selectedSpeed === null) return undefined;
+    return formatSwimTime(
+      swimTimeSeconds(distFt, this.selectedSpeed, this.config.metersToFeet)
+    );
+  }
+
+  /** Sets the movement speed (or `null` for Off) and refreshes every label. */
+  setSpeed(mPerMin: number | null): void {
+    this.selectedSpeed = mPerMin;
+    this.updateAll();
+  }
+
+  /** Rebuilds every label's HTML for the current speed selection. */
+  updateAll(): void {
+    for (const rec of this.labels) {
+      if (!rec.a || !rec.b) continue;
+      const { distFt, heading, trueBearing } = computeSegment(
+        rec.a, rec.b, this.config.metersToFeet, this.config.magDeclination
+      );
+      rec.div.innerHTML = buildSegmentHtml(
+        distFt, heading, trueBearing, this.timeTextFor(distFt)
+      );
+      // The projector rotates rec.arrow by reference each frame; rebuilding
+      // innerHTML replaced the SVG node, so re-point it or the needle freezes.
+      const arrow = rec.div.querySelector("svg.seg-arrow") as SVGElement | null;
+      rec.arrow = arrow ?? undefined;
+    }
+  }
 
   /** Creates a label between the last two markers in the measure group. */
   addFromLastTwo(app: Q3DApplication): void {
@@ -67,7 +109,11 @@ export class SegmentLabelManager {
       (a.z + b.z) / 2 + this.config.midLabelLift
     );
 
-    const div = makeDivLabel(buildSegmentHtml(distFt, heading, trueBearing), "segment", "center");
+    const div = makeDivLabel(
+      buildSegmentHtml(distFt, heading, trueBearing, this.timeTextFor(distFt)),
+      "segment",
+      "center"
+    );
     const arrow = div.querySelector("svg.seg-arrow") as SVGElement | null;
     this.labels.push({
       div,

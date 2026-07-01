@@ -50,6 +50,15 @@
   transform-origin: center;
 }
 
+.label-segment .seg-time {
+  display: block;
+  color: #a5f3fc;
+  font-weight: 600;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+
 .label-waypoint {
   border-left-color: #22d3ee;
   font-size: 11px;
