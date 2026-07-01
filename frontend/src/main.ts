@@ -197,6 +197,18 @@ async function initCustom(config: SiteConfig): Promise<void> {
   const panelContainer = document.getElementById("divemap-panel");
   if (!panelContainer) return;
 
+  // Mobile: FAB toggles the panel column overlay (see mobile.css @media block).
+  // On desktop `panel-open` has no CSS effect, so setPanelOpen(false) is a no-op
+  // there and can be called freely from the edit/placement flows below.
+  const fab = document.getElementById("mobile-panel-fab");
+  function setPanelOpen(open: boolean) {
+    document.body.classList.toggle("panel-open", open);
+    fab?.setAttribute("aria-expanded", String(open));
+  }
+  fab?.addEventListener("click", () =>
+    setPanelOpen(!document.body.classList.contains("panel-open"))
+  );
+
   // Speed selector: created before the plan panel so the plan panel can read
   // the current speed for its total-time readout. Selecting a speed reveals
   // per-leg times; Off (the default) hides them.
@@ -241,7 +253,12 @@ async function initCustom(config: SiteConfig): Promise<void> {
       highlightWaypoint(null);
       app.measure.clear();
     },
-    setEditMode: (flag) => setEditMode(app, flag),
+    setEditMode: (flag) => {
+      // Entering edit mode collapses the mobile overlay so the map is tappable
+      // for dropping waypoints.
+      if (flag) setPanelOpen(false);
+      setEditMode(app, flag);
+    },
     highlightWaypoint,
     metersToFeet: config.metersToFeet,
     getSelectedSpeedMPerMin: () => speedPanel?.getSpeed() ?? null,
@@ -253,8 +270,10 @@ async function initCustom(config: SiteConfig): Promise<void> {
     setPlacementActive: (flag) => {
       if (flag) {
         // Entering landmark placement cancels plan-edit so only one consumer
-        // owns the click stream.
+        // owns the click stream, and collapses the mobile overlay so the map
+        // is tappable for placing the landmark.
         planPanel?.handleEscape();
+        setPanelOpen(false);
       }
       setMeasureMode(app, flag ? "landmark" : "off");
     },
@@ -333,13 +352,6 @@ async function initCustom(config: SiteConfig): Promise<void> {
       planPanel?.handleLogout();
       landmarkPanel?.handleLogout();
     },
-  });
-
-  // Mobile: toggle the panel column overlay (see mobile.css @media block).
-  const fab = document.getElementById("mobile-panel-fab");
-  fab?.addEventListener("click", () => {
-    const open = document.body.classList.toggle("panel-open");
-    fab.setAttribute("aria-expanded", String(open));
   });
 }
 
